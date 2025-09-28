@@ -7,21 +7,33 @@ import print from './lib/print.js';
 const COOLDOWN_SECONDS = 5;
 const RESPONSE_DELAY_MS = 2000;
 
-export async function handler(m, isSubBot = false) { // Se añade isSubBot para diferenciar
+export async function handler(m, isSubBot = false) {
   const sock = this;
 
   try {
     const msg = m.messages[0];
     if (!msg.message || msg.key.fromMe) return;
 
-  // Pretty print message to console
-  try { await print(msg, sock); } catch {}
+    try { await print(msg, sock); } catch (e) { console.error("Print error:", e); }
 
     const senderId = msg.key.participant || msg.key.remoteJid;
-    msg.sender = senderId; // Adjuntar para fácil acceso
+    msg.sender = senderId;
 
     const from = msg.key.remoteJid;
     let body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+
+    // --- Ejecutar Auto-Handlers ---
+    // Busca comandos que no necesitan prefijo y se ejecutan automáticamente.
+    const autoHandlers = Array.from(commands.values()).filter(cmd => cmd.isAutoHandler);
+    for (const handler of autoHandlers) {
+      try {
+        // Pasamos el cuerpo del mensaje para evitar que cada handler lo recalcule.
+        await handler.execute({ sock, msg, body });
+      } catch (error) {
+        console.error(`Error en el auto-handler ${handler.name}:`, error);
+      }
+    }
+    // --- Fin de Auto-Handlers ---
 
     const settings = readSettingsDb();
     const groupPrefix = from.endsWith('@g.us') ? settings[from]?.prefix : null;
