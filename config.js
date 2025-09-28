@@ -8,7 +8,7 @@ const config = {
   botName: "Gawr Gura",
 
   // El nombre del propietario del bot.
-  ownerName: "Chumbies",
+  ownerName: "𝓨𝓞 𝓢𝓞𝓨 𝓨𝓞 𝓦𝓐.ℳ𝓔/𝟓𝟕𝟑𝟏𝟑𝟑𝟑𝟕𝟒𝟏𝟑𝟐?𝓣𝓔𝓧𝓣=ℋ𝓞ℒ𝓐",
 
   // Tasa de impuestos para la economía (ej. 0.10 para 10%)
   taxRate: 0.19,
