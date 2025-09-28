@@ -399,10 +399,44 @@ async function connectToWhatsApp() {
   return sock;
 }
 
+import { exec } from 'child_process';
+
+// --- TAREA DE MANTENIMIENTO AUTOMÁTICO ---
+function runHourlyMaintenance() {
+  console.log('[Maintenance] Iniciando tarea de mantenimiento por hora...');
+
+  exec('git pull', (error, stdout, stderr) => {
+    if (error) {
+      console.error('[Maintenance] Error al ejecutar git pull:', error.message);
+      // A pesar del error, intentamos reiniciar para mantener el bot activo.
+      console.log('[Maintenance] Error en la actualización, procediendo a reiniciar de todos modos...');
+      setTimeout(() => process.exit(0), 2000);
+      return;
+    }
+
+    if (stdout.includes("Already up to date.") || stdout.includes("Ya está actualizado.")) {
+      console.log('[Maintenance] El bot ya está actualizado. Realizando ping y reinicio programado.');
+      // El "ping" es este mismo log. El objetivo es mantener el proceso activo.
+      setTimeout(() => process.exit(0), 2000); // Reinicia para refrescar la memoria.
+    } else {
+      console.log('[Maintenance] Actualización encontrada. Reiniciando para aplicar cambios...');
+      // El comando de actualización ya se encarga del reinicio, pero lo forzamos aquí por si acaso.
+      setTimeout(() => process.exit(0), 2000);
+    }
+  });
+}
+
 // --- INICIO DEL BOT ---
 (async () => {
   await loadCommands();
-  await connectToWhatsApp();
+  const sock = await connectToWhatsApp();
+
+  // Iniciar la tarea de mantenimiento una vez que el bot esté conectado.
+  if (sock) {
+    console.log('[Scheduler] Tarea de mantenimiento por hora configurada.');
+    // Se ejecutará cada hora (3600000 ms)
+    setInterval(runHourlyMaintenance, 3600000);
+  }
 })();
 
 
