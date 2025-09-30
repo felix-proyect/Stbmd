@@ -63,7 +63,13 @@ const tiktokAutoDownloader = {
                 },
                 { quoted: msg }
             );
-             await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
+
+            // Send success reaction in its own try-catch to prevent it from triggering the main error block.
+            try {
+                await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
+            } catch (reactError) {
+                console.error("Error sending success reaction:", reactError);
+            }
 
         } catch (error) {
             console.error("Error in TikTok auto-downloader:", error);
