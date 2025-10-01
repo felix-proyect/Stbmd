@@ -16,14 +16,14 @@ async function processArtistRequest(sock, msg, artist, type) {
     try {
         await sock.sendMessage(chatId, { text: `▶️ *Iniciando tu solicitud para "${artist}"!*\nBuscando las 50 canciones principales...` }, { quoted: msg });
 
-        const searchResults = await yts({ query: `${artist} top 50 songs`, pages: 3 });
-        const videos = searchResults.videos.slice(0, 50);
+        const searchResults = await yts({ query: `${artist} top songs`, pages: 1 });
+        const videos = searchResults.videos.slice(0, 15); // Reducido a 15 para evitar sobrecarga del servidor
 
         if (videos.length === 0) {
             throw new Error(`No se encontraron canciones para "${artist}".`);
         }
 
-        await sock.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones!*\nComenzando la descarga a máxima velocidad.` }, { quoted: msg });
+        await sock.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones principales!*\nComenzando la descarga...` }, { quoted: msg });
 
         for (let i = 0; i < videos.length; i++) {
             const video = videos[i];
