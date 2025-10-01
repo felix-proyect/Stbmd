@@ -1,102 +1,127 @@
-import fetch from "node-fetch";
+import fetch from 'node-fetch';
 import yts from 'yt-search';
+import axios from 'axios';
+import { savetube } from '../lib/yt-savetube.js';
+import { ogmp3 } from '../lib/youtubedl.js';
 import config from '../config.js';
 
-// Helper function to format large numbers for display
-function formatViews(views) {
-  if (views === undefined || views === null) return "No disponible";
-  if (views >= 1_000_000_000) return `${(views / 1_000_000_000).toFixed(1)}B`;
-  if (views >= 1_000_000) return `${(views / 1_000_000).toFixed(1)}M`;
-  if (views >= 1_000) return `${(views / 1_000).toFixed(1)}k`;
-  return views.toString();
+const LimitAud = 725 * 1024 * 1024; // 725MB
+const LimitVid = 425 * 1024 * 1024; // 425MB
+const userRequests = new Set();
+
+// Helper function to get the size of a remote file
+async function getFileSize(url) {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return parseInt(response.headers.get('content-length') || 0);
+  } catch {
+    return 0; // If HEAD request fails, assume 0
+  }
+}
+
+// Helper function to format duration in seconds to a readable string
+function secondString(seconds) {
+    seconds = Number(seconds);
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const parts = [];
+    if (d > 0) parts.push(d + (d === 1 ? ' día' : ' días'));
+    if (h > 0) parts.push(h + (h === 1 ? ' hora' : ' horas'));
+    if (m > 0) parts.push(m + (m === 1 ? ' minuto' : ' minutos'));
+    if (s > 0) parts.push(s + (s === 1 ? ' segundo' : ' segundos'));
+    return parts.join(', ');
 }
 
 const playCommand = {
   name: "play",
   category: "descargas",
-  description: "Busca y descarga audio o video de YouTube.",
-  aliases: ['yta', 'ytmp3', 'play2', 'ytv', 'ytmp4', 'playaudio', 'mp4'],
+  description: "Busca y descarga audio o video de YouTube con múltiples opciones y APIs.",
+  aliases: ['musica', 'play2', 'video', 'play3', 'playdoc', 'play4', 'playdoc2'],
 
   async execute({ sock, msg, args, commandName }) {
     const text = args.join(' ');
     if (!text.trim()) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `❀ Por favor, ingresa el nombre de la música a descargar.` }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: `*🤔 ¿Qué estás buscando?*\nIngresa el nombre o enlace de la canción.\n\n*Ejemplo:*\n.play Morat` }, { quoted: msg });
     }
+
+    if (userRequests.has(msg.sender)) {
+      return sock.sendMessage(msg.key.remoteJid, { text: `⏳ Oye, calma. Ya tienes una descarga en proceso. Espera a que termine.` }, { quoted: msg });
+    }
+
+    userRequests.add(msg.sender);
 
     try {
       await sock.sendMessage(msg.key.remoteJid, { react: { text: '🔍', key: msg.key } });
 
-      const youtubeRegexID = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/;
-      const videoIdMatch = text.match(youtubeRegexID);
-      const searchQuery = videoIdMatch ? `https://youtu.be/${videoIdMatch[1]}` : text;
-
-      const searchResults = await yts(searchQuery);
+      const searchResults = await yts(text);
       const video = searchResults.videos[0];
 
       if (!video) {
-        return sock.sendMessage(msg.key.remoteJid, { text: '✧ No se encontraron resultados para tu búsqueda.' }, { quoted: msg });
+        throw new Error('No se encontraron resultados para tu búsqueda.');
       }
 
-      const { title, thumbnail, timestamp, views, ago, url, author } = video;
-      const formattedViews = formatViews(views);
-      const channel = author ? author.name : 'Desconocido';
+      const tipoDescarga = ['play', 'musica', 'play3', 'playdoc'].includes(commandName) ? 'audio' : 'video';
 
-      const infoMessage = `「✦」Descargando *<${title || 'Desconocido'}>*\n\n` +
-                          `> 📺 Canal ✦ *${channel}*\n` +
-                          `> 👀 Vistas ✦ *${formattedViews || 'Desconocido'}*\n` +
-                          `> ⏳ Duración ✦ *${timestamp || 'Desconocido'}*\n` +
-                          `> 📆 Publicado ✦ *${ago || 'Desconocido'}*\n` +
-                          `> 🖇️ Link ✦ ${url}`;
+      await sock.sendMessage(msg.key.remoteJid, { text: `*${video.title}*\n\n*⇄ㅤ     ◁   ㅤ  ❚❚ㅤ     ▷ㅤ     ↻*\n\n*⏰ Duración:* ${secondString(video.duration.seconds)}\n*👉🏻 Aguarde un momento en lo que envío su ${tipoDescarga}*`}, { quoted: msg });
 
-      await sock.sendMessage(msg.key.remoteJid, {
-        image: { url: thumbnail },
-        caption: infoMessage,
-        contextInfo: {
-          externalAdReply: {
-            title: config.botName, // Adaptado para usar config
-            body: `By: ${config.ownerName}`, // Adaptado para usar config
-            mediaType: 1,
-            thumbnail: await (await fetch(thumbnail)).buffer(),
-            mediaUrl: url,
-            sourceUrl: url,
-            renderLargerThumbnail: true,
+      // --- Lógica de descarga ---
+      const isAudio = ['play', 'musica', 'play3', 'playdoc'].includes(commandName);
+      const isDocument = ['play3', 'playdoc', 'play4', 'playdoc2'].includes(commandName);
+
+      const audioApis = [
+        () => savetube.download(video.url, 'mp3'),
+        () => ogmp3.download(video.url, '320', 'audio')
+      ];
+      const videoApis = [
+        () => savetube.download(video.url, '720'),
+        () => ogmp3.download(video.url, '720', 'video')
+      ];
+
+      let downloadResult = null;
+      for (const apiCall of (isAudio ? audioApis : videoApis)) {
+        try {
+          const result = await apiCall();
+          if (result && result.status && result.result.download) {
+            downloadResult = result.result;
+            break;
           }
-        }
-      }, { quoted: msg });
-
-      if (['play', 'yta', 'ytmp3', 'playaudio'].includes(commandName)) {
-        try {
-          await sock.sendMessage(msg.key.remoteJid, { react: { text: '🎵', key: msg.key } });
-          const apiRes = await fetch(`https://api.vreden.my.id/api/ytmp3?url=${url}`);
-          const apiJson = await apiRes.json();
-          const downloadUrl = apiJson.result.download.url;
-
-          if (!downloadUrl) throw new Error('El enlace de audio no se generó correctamente.');
-
-          await sock.sendMessage(msg.key.remoteJid, { audio: { url: downloadUrl }, fileName: `${title}.mp3`, mimetype: 'audio/mpeg' }, { quoted: msg });
         } catch (e) {
-          console.error("Error al descargar audio:", e);
-          return sock.sendMessage(msg.key.remoteJid, { text: '✦ No se pudo enviar el audio. El archivo puede ser demasiado pesado o la API falló.' }, { quoted: msg });
-        }
-      } else if (['play2', 'ytv', 'ytmp4', 'mp4'].includes(commandName)) {
-        try {
-          await sock.sendMessage(msg.key.remoteJid, { react: { text: '📹', key: msg.key } });
-          const apiRes = await fetch(`https://api.neoxr.eu/api/youtube?url=${url}&type=video&quality=480p&apikey=GataDios`);
-          const apiJson = await apiRes.json();
-          const downloadUrl = apiJson.data.url;
-
-          if (!downloadUrl) throw new Error('No se pudo generar el enlace de video.');
-
-          await sock.sendMessage(msg.key.remoteJid, { video: { url: downloadUrl }, caption: title }, { quoted: msg });
-        } catch (e) {
-          console.error("Error al descargar video:", e);
-          return sock.sendMessage(msg.key.remoteJid, { text: '✦ No se pudo enviar el video. El archivo puede ser demasiado pesado o la API falló.' }, { quoted: msg });
+          console.error(`Fallo de API en Play: ${e.message}`);
+          continue;
         }
       }
+
+      if (!downloadResult) {
+        throw new Error('Todas las APIs de descarga fallaron.');
+      }
+
+      const fileSize = await getFileSize(downloadResult.download);
+      const sizeLimit = isAudio ? LimitAud : LimitVid;
+
+      if (fileSize > sizeLimit || isDocument) {
+        await sock.sendMessage(msg.key.remoteJid, {
+          document: { url: downloadResult.download },
+          mimetype: isAudio ? 'audio/mpeg' : 'video/mp4',
+          fileName: `${downloadResult.title}.${isAudio ? 'mp3' : 'mp4'}`,
+          caption: `✅ *Descarga como documento*\n*Título:* ${downloadResult.title}`
+        }, { quoted: msg });
+      } else {
+        if (isAudio) {
+          await sock.sendMessage(msg.key.remoteJid, { audio: { url: downloadResult.download }, mimetype: 'audio/mpeg' }, { quoted: msg });
+        } else {
+          await sock.sendMessage(msg.key.remoteJid, { video: { url: downloadResult.download }, caption: `✅ *${downloadResult.title}*` }, { quoted: msg });
+        }
+      }
+      await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
 
     } catch (error) {
       console.error("Error en el comando play:", error);
-      return sock.sendMessage(msg.key.remoteJid, { text: `✦ Ocurrió un error: ${error.message}` }, { quoted: msg });
+      await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
+      await sock.sendMessage(msg.key.remoteJid, { text: `Ocurrió un error: ${error.message}` }, { quoted: msg });
+    } finally {
+      userRequests.delete(msg.sender);
     }
   }
 };
