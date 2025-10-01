@@ -90,7 +90,8 @@ export async function handler(m, isSubBot = false) {
       // Ejecución
       try {
         await new Promise(resolve => setTimeout(resolve, RESPONSE_DELAY_MS));
-        await command.execute({ sock, msg, args, commands, config, testCache, isOwner });
+        // Pasamos 'commandName' para que los comandos puedan saber con qué alias fueron llamados.
+        await command.execute({ sock, msg, args, commands, config, testCache, isOwner, commandName });
         cooldowns.set(senderId, Date.now());
       } catch (error) {
         console.error(`Error en comando ${commandName}:`, error);
