@@ -20,10 +20,10 @@ async function processQueue() {
     }
 
     isWorkerRunning = true;
-    const { chatId, artist, type, originalMessageKey } = request;
+    const { chatId, artist, type } = request;
 
     try {
-        await sockInstance.sendMessage(chatId, { text: `▶️ *Comenzando tu solicitud para "${artist}"!*\nBuscando las 50 canciones principales...` }, { quoted: { key: originalMessageKey } });
+        await sockInstance.sendMessage(chatId, { text: `▶️ *Comenzando tu solicitud para "${artist}"!*\nBuscando las 50 canciones principales...` });
 
         const searchResults = await yts({ query: `${artist} top 50 songs`, pages: 3 });
         const videos = searchResults.videos.slice(0, 50);
@@ -32,7 +32,7 @@ async function processQueue() {
             throw new Error(`No se encontraron canciones para "${artist}".`);
         }
 
-        await sockInstance.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones!*\nComenzando la descarga. Esto puede tardar varios minutos...` }, { quoted: { key: originalMessageKey } });
+        await sockInstance.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones!*\nComenzando la descarga. Esto puede tardar varios minutos...` });
 
         for (let i = 0; i < videos.length; i++) {
             const video = videos[i];
@@ -70,11 +70,11 @@ async function processQueue() {
             }
         }
 
-        await sockInstance.sendMessage(chatId, { text: `✅ *¡Descarga completada!*\nSe enviaron ${videos.length} canciones de *${artist}*.` }, { quoted: { key: originalMessageKey } });
+        await sockInstance.sendMessage(chatId, { text: `✅ *¡Descarga completada!*\nSe enviaron ${videos.length} canciones de *${artist}*.` });
 
     } catch (error) {
         console.error("[Artista Worker] A critical error occurred:", error);
-        await sockInstance.sendMessage(chatId, { text: `❌ *Ocurrió un error procesando tu solicitud para "${artist}"*.\nMotivo: ${error.message}` }, { quoted: { key: originalMessageKey } });
+        await sockInstance.sendMessage(chatId, { text: `❌ *Ocurrió un error procesando tu solicitud para "${artist}"*.\nMotivo: ${error.message}` });
     } finally {
         isWorkerRunning = false;
         // Automatically check for the next item in the queue
