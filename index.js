@@ -426,8 +426,6 @@ function runHourlyMaintenance() {
   });
 }
 
-import { startArtistQueueWorker } from './plugins/artista.js';
-
 // --- INICIO DEL BOT ---
 (async () => {
   await loadCommands();
@@ -437,10 +435,6 @@ import { startArtistQueueWorker } from './plugins/artista.js';
     // Iniciar la tarea de mantenimiento una vez que el bot esté conectado.
     console.log('[Scheduler] Tarea de mantenimiento por hora configurada.');
     setInterval(runHourlyMaintenance, 3600000); // Se ejecutará cada hora
-
-    // Iniciar el worker de la cola de descargas de artistas.
-    console.log('[Queue] Iniciando el worker de la cola de artistas...');
-    startArtistQueueWorker(sock);
   }
 })();
 
