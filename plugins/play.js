@@ -20,7 +20,7 @@ const playCommand = {
   async execute({ sock, msg, args, commandName }) {
     const text = args.join(' ');
     if (!text.trim()) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `*✨️ ¿Qué música quieres buscar o descargar?*` }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: `❀ Por favor, ingresa el nombre de la música a descargar.` }, { quoted: msg });
     }
 
     try {
@@ -41,12 +41,11 @@ const playCommand = {
       const formattedViews = formatViews(views);
       const channel = author ? author.name : 'Desconocido';
 
-      const infoMessage = `「🚀」 *Descargando* 「🚀」\n\n` +
-                          `> ርTitulo ✦ *${title}*\n` +
+      const infoMessage = `「✦」Descargando *<${title || 'Desconocido'}>*\n\n` +
                           `> 📺 Canal ✦ *${channel}*\n` +
-                          `> 👀 Vistas ✦ *${formattedViews}*\n` +
-                          `> ⏳ Duración ✦ *${timestamp}*\n` +
-                          `> 📆 Publicado ✦ *${ago}*\n` +
+                          `> 👀 Vistas ✦ *${formattedViews || 'Desconocido'}*\n` +
+                          `> ⏳ Duración ✦ *${timestamp || 'Desconocido'}*\n` +
+                          `> 📆 Publicado ✦ *${ago || 'Desconocido'}*\n` +
                           `> 🖇️ Link ✦ ${url}`;
 
       await sock.sendMessage(msg.key.remoteJid, {
@@ -54,17 +53,17 @@ const playCommand = {
         caption: infoMessage,
         contextInfo: {
           externalAdReply: {
-            title: config.botName, // Usar botName de config
-            body: `By: ${config.ownerName}`, // Usar ownerName de config
+            title: config.botName, // Adaptado para usar config
+            body: `By: ${config.ownerName}`, // Adaptado para usar config
             mediaType: 1,
             thumbnail: await (await fetch(thumbnail)).buffer(),
             mediaUrl: url,
             sourceUrl: url,
+            renderLargerThumbnail: true,
           }
         }
       }, { quoted: msg });
 
-      // Lógica para descargar audio o video según el comando usado
       if (['play', 'yta', 'ytmp3', 'playaudio'].includes(commandName)) {
         try {
           await sock.sendMessage(msg.key.remoteJid, { react: { text: '🎵', key: msg.key } });
@@ -72,9 +71,9 @@ const playCommand = {
           const apiJson = await apiRes.json();
           const downloadUrl = apiJson.result.download.url;
 
-          if (!downloadUrl) throw new Error('No se pudo generar el enlace de audio.');
+          if (!downloadUrl) throw new Error('El enlace de audio no se generó correctamente.');
 
-          await sock.sendMessage(m.chat, { audio: { url: downloadUrl }, fileName: `${title}.mp3`, mimetype: 'audio/mpeg' }, { quoted: msg });
+          await sock.sendMessage(msg.key.remoteJid, { audio: { url: downloadUrl }, fileName: `${title}.mp3`, mimetype: 'audio/mpeg' }, { quoted: msg });
         } catch (e) {
           console.error("Error al descargar audio:", e);
           return sock.sendMessage(msg.key.remoteJid, { text: '✦ No se pudo enviar el audio. El archivo puede ser demasiado pesado o la API falló.' }, { quoted: msg });
@@ -97,7 +96,7 @@ const playCommand = {
 
     } catch (error) {
       console.error("Error en el comando play:", error);
-      return sock.sendMessage(msg.key.remoteJid, { text: `✦ Ocurrió un error general: ${error.message}` }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: `✦ Ocurrió un error: ${error.message}` }, { quoted: msg });
     }
   }
 };
