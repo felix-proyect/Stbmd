@@ -1,5 +1,5 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
-import { readUsageDb, writeUsageDb } from '../lib/usage.js';
+import { deleteUserUsage } from '../lib/usage.js';
 
 const unregisterCommand = {
   name: "unreg",
@@ -31,12 +31,8 @@ const unregisterCommand = {
     delete usersDb[senderId];
     writeUsersDb(usersDb);
 
-    // 2. Delete from command usage DB to close the loophole
-    const usageDb = readUsageDb();
-    if (usageDb[senderId]) {
-        delete usageDb[senderId];
-        writeUsageDb(usageDb);
-    }
+    // 2. Delete from command usage DB using the safe, exported function
+    deleteUserUsage(senderId);
 
     await sock.sendMessage(msg.key.remoteJid, { text: "✅ Has eliminado tu registro exitosamente. Todos tus datos, incluyendo el historial de uso de comandos, han sido borrados." }, { quoted: msg });
   }
