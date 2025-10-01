@@ -2,6 +2,7 @@ import yts from 'yt-search';
 import { savetube } from '../lib/yt-savetube.js';
 import { ogmp3 } from '../lib/youtubedl.js';
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { getCommandUsage, incrementCommandUsage } from '../lib/usage.js';
 
 // Set to track active user requests, limited to 5 concurrent users
 const activeUserRequests = new Set();
@@ -10,16 +11,11 @@ const STANDARD_COST = 1000;
 const PREMIUM_COST = 10000;
 const DAILY_LIMIT = 3;
 
-// Helper function to get today's date in YYYY-MM-DD format
-const getTodayDate = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-// The main logic for fetching and sending songs for a single user
+// The main logic for fetching and sending songs for a single user, now with sequential processing
 async function processArtistRequest(sock, msg, artist, type) {
     const chatId = msg.key.remoteJid;
     const senderId = msg.sender;
+    let successCount = 0;
 
     try {
         await sock.sendMessage(chatId, { text: `▶️ *Iniciando tu solicitud para "${artist}"!*\nBuscando las 15 canciones principales...` }, { quoted: msg });
@@ -31,43 +27,51 @@ async function processArtistRequest(sock, msg, artist, type) {
             throw new Error(`No se encontraron canciones para "${artist}".`);
         }
 
-        await sock.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones!*\nComenzando la descarga...` }, { quoted: msg });
+        await sock.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones!*\nComenzando la descarga secuencial para ahorrar recursos. Esto puede tardar...` }, { quoted: msg });
 
         for (const video of videos) {
-            console.log(`[Artista] Descargando para ${senderId.split('@')[0]}: ${video.title}`);
-            const isAudio = type === 'audio';
-            const apis = isAudio
-                ? [() => savetube.download(video.url, 'mp3'), () => ogmp3.download(video.url, '320', 'audio')]
-                : [() => savetube.download(video.url, '720'), () => ogmp3.download(video.url, '720', 'video')];
+            try {
+                console.log(`[Artista] Procesando para ${senderId.split('@')[0]}: ${video.title}`);
+                const isAudio = type === 'audio';
+                const apis = isAudio
+                    ? [() => savetube.download(video.url, 'mp3'), () => ogmp3.download(video.url, '320', 'audio')]
+                    : [() => savetube.download(video.url, '720'), () => ogmp3.download(video.url, '720', 'video')];
 
-            let downloadResult = null;
-            for (const apiCall of apis) {
-                try {
-                    const result = await apiCall();
-                    if (result && result.status && result.result.download) {
-                        downloadResult = result.result;
-                        break;
+                let downloadResult = null;
+                for (const apiCall of apis) {
+                    try {
+                        const result = await apiCall();
+                        if (result?.status && result.result?.download) {
+                            downloadResult = result.result;
+                            break;
+                        }
+                    } catch (e) {
+                        console.error(`[Artista API Error] API falló para "${video.title}": ${e.message}`);
+                        continue;
                     }
-                } catch (e) { continue; }
-            }
+                }
 
-            if (downloadResult?.download) {
-                try {
+                if (downloadResult?.download) {
                     if (isAudio) {
                         await sock.sendMessage(chatId, { audio: { url: downloadResult.download }, mimetype: 'audio/mpeg' });
                     } else {
                         await sock.sendMessage(chatId, { video: { url: downloadResult.download }, caption: video.title });
                     }
-                } catch (sendError) {
-                    console.error(`[Artista] Failed to send file for "${video.title}": ${sendError.message}`);
+                    successCount++;
+                } else {
+                    await sock.sendMessage(chatId, { text: `⚠️ No se pudo descargar: "${video.title}". Saltando a la siguiente.`});
+                    console.warn(`[Artista Download] Todas las APIs fallaron para "${video.title}".`);
                 }
+            } catch (songError) {
+                console.error(`[Artista Song Error] No se pudo procesar "${video.title}": ${songError.message}`);
+                await sock.sendMessage(chatId, { text: `❌ Error al procesar: "${video.title}". Saltando a la siguiente.`});
             }
         }
 
-        await sock.sendMessage(chatId, { text: `✅ *¡Descarga completada!*\nSe enviaron ${videos.length} canciones de *${artist}*.` }, { quoted: msg });
+        await sock.sendMessage(chatId, { text: `✅ *¡Descarga completada!*\nSe enviaron ${successCount} de ${videos.length} canciones de *${artist}*.` }, { quoted: msg });
 
     } catch (error) {
-        console.error("[Artista] A critical error occurred:", error);
+        console.error("[Artista] A critical error occurred during the process:", error);
         await sock.sendMessage(chatId, { text: `❌ *Ocurrió un error procesando tu solicitud para "${artist}"*.\nMotivo: ${error.message}` }, { quoted: msg });
     }
 }
@@ -75,7 +79,7 @@ async function processArtistRequest(sock, msg, artist, type) {
 const artistaCommand = {
   name: "artista",
   category: "descargas",
-  description: "Descarga las 15 canciones más populares de un artista. Tiene un costo y límite diario.",
+  description: "Descarga las 15 canciones más populares de un artista (costo y límite diario).",
   aliases: ["artista2"],
 
   async execute({ sock, msg, args, commandName }) {
@@ -92,23 +96,12 @@ const artistaCommand = {
         return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
-    // Initialize usage data if it doesn't exist
-    if (!user.artista_uses) {
-        user.artista_uses = { count: 0, last_used: '' };
-    }
-
-    const today = getTodayDate();
-    // Reset count if it's a new day
-    if (user.artista_uses.last_used !== today) {
-        user.artista_uses.count = 0;
-        user.artista_uses.last_used = today;
-    }
-
-    const currentCost = user.artista_uses.count < DAILY_LIMIT ? STANDARD_COST : PREMIUM_COST;
-    const isPremiumUse = user.artista_uses.count >= DAILY_LIMIT;
+    const usage = getCommandUsage(senderId, 'artista');
+    const currentCost = usage.count < DAILY_LIMIT ? STANDARD_COST : PREMIUM_COST;
+    const isPremiumUse = usage.count >= DAILY_LIMIT;
 
     if (user.coins < currentCost) {
-        let reply = `🪙 *Monedas insuficientes.*\nNecesitas ${currentCost} coins para usar este comando. Tu saldo es de ${user.coins} coins.`;
+        let reply = `🪙 *Monedas insuficientes.*\nNecesitas ${currentCost} coins. Tu saldo es de ${user.coins} coins.`;
         if (isPremiumUse) {
             reply += `\n\n(Ya has superado tus ${DAILY_LIMIT} usos diarios, por eso el costo es más alto).`;
         }
@@ -119,19 +112,18 @@ const artistaCommand = {
         return sock.sendMessage(msg.key.remoteJid, { text: `🛠️ *El servicio está actualmente a su máxima capacidad.*\nHay ${MAX_CONCURRENT_REQUESTS} descargas en proceso. Por favor, inténtalo de nuevo en unos minutos.` }, { quoted: msg });
     }
 
-    // Deduct coins, increment usage, and save
     user.coins -= currentCost;
-    user.artista_uses.count++;
     writeUsersDb(usersDb);
+    incrementCommandUsage(senderId, 'artista');
 
     activeUserRequests.add(senderId);
 
+    const updatedUsage = getCommandUsage(senderId, 'artista');
     let costMessage = `🪙 Se han deducido ${currentCost} coins. Tu solicitud ha comenzado.`;
-    if (isPremiumUse) {
-        costMessage += `\n(Este es tu uso número ${user.artista_uses.count} de hoy).`;
-    } else {
-        costMessage += `\n(Uso ${user.artista_uses.count} de ${DAILY_LIMIT} hoy).`;
-    }
+    costMessage += isPremiumUse
+        ? `\n(Este es tu uso número ${updatedUsage.count} de hoy).`
+        : `\n(Uso ${updatedUsage.count} de ${DAILY_LIMIT} hoy).`;
+
     await sock.sendMessage(msg.key.remoteJid, { text: costMessage }, { quoted: msg });
     await sock.sendMessage(msg.key.remoteJid, { react: { text: '👍', key: msg.key } });
 
