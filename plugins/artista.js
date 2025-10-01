@@ -3,15 +3,12 @@ import { savetube } from '../lib/yt-savetube.js';
 import { ogmp3 } from '../lib/youtubedl.js';
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
 
-// Set to track active user requests, limited to 3 concurrent users
+// Set to track active user requests, limited to 5 concurrent users
 const activeUserRequests = new Set();
-const MAX_CONCURRENT_REQUESTS = 3;
+const MAX_CONCURRENT_REQUESTS = 5;
 const ARTISTA_COMMAND_COST = 1000;
 
-// Helper function to introduce a delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// The main logic for fetching and sending songs for a single user
+// The main logic for fetching and sending songs for a single user, optimized for speed
 async function processArtistRequest(sock, msg, artist, type) {
     const chatId = msg.key.remoteJid;
     const senderId = msg.sender;
@@ -26,7 +23,7 @@ async function processArtistRequest(sock, msg, artist, type) {
             throw new Error(`No se encontraron canciones para "${artist}".`);
         }
 
-        await sock.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones!*\nComenzando la descarga. Se enviará una cada 10 segundos.` }, { quoted: msg });
+        await sock.sendMessage(chatId, { text: `✅ *¡Se encontraron ${videos.length} canciones!*\nComenzando la descarga a máxima velocidad.` }, { quoted: msg });
 
         for (let i = 0; i < videos.length; i++) {
             const video = videos[i];
@@ -43,10 +40,10 @@ async function processArtistRequest(sock, msg, artist, type) {
                     const result = await apiCall();
                     if (result && result.status && result.result.download) {
                         downloadResult = result.result;
-                        break;
+                        break; // Success, move to next song
                     }
                 } catch (e) {
-                    continue;
+                    continue; // API failed, try the next one
                 }
             }
 
@@ -61,7 +58,7 @@ async function processArtistRequest(sock, msg, artist, type) {
                     console.error(`[Artista] Failed to send file for "${video.title}": ${sendError.message}`);
                 }
             }
-            await delay(10000);
+            // No delay, send the next song immediately
         }
 
         await sock.sendMessage(chatId, { text: `✅ *¡Descarga completada!*\nSe enviaron ${videos.length} canciones de *${artist}*.` }, { quoted: msg });
@@ -75,7 +72,7 @@ async function processArtistRequest(sock, msg, artist, type) {
 const artistaCommand = {
   name: "artista",
   category: "descargas",
-  description: "Descarga las 50 canciones más populares de un artista (costo: 1000 coins).",
+  description: "Descarga las 50 canciones más populares de un artista (costo: 1000 coins). Límite de 5 usuarios.",
   aliases: ["artista2"],
 
   async execute({ sock, msg, args, commandName }) {
@@ -88,7 +85,6 @@ const artistaCommand = {
     const usersDb = readUsersDb();
     const user = usersDb[senderId];
 
-    // 1. Check user registration and balance
     if (!user) {
         return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
@@ -96,12 +92,10 @@ const artistaCommand = {
         return sock.sendMessage(msg.key.remoteJid, { text: `🪙 *Monedas insuficientes.*\nNecesitas ${ARTISTA_COMMAND_COST} coins para usar este comando. Tu saldo es de ${user.coins} coins.` }, { quoted: msg });
     }
 
-    // 2. Check concurrent request limit
     if (activeUserRequests.size >= MAX_CONCURRENT_REQUESTS) {
         return sock.sendMessage(msg.key.remoteJid, { text: `🛠️ *El servicio está actualmente a su máxima capacidad.*\nHay ${MAX_CONCURRENT_REQUESTS} descargas en proceso. Por favor, inténtalo de nuevo en unos minutos.` }, { quoted: msg });
     }
 
-    // 3. Deduct coins and add user to active requests
     user.coins -= ARTISTA_COMMAND_COST;
     writeUsersDb(usersDb);
     activeUserRequests.add(senderId);
@@ -111,7 +105,6 @@ const artistaCommand = {
 
     const type = commandName === 'artista' ? 'audio' : 'video';
 
-    // Process the request immediately and release the slot when done
     processArtistRequest(sock, msg, artist, type)
         .finally(() => {
             activeUserRequests.delete(senderId);
