@@ -59,13 +59,35 @@ export async function handler(m, isSubBot = false) {
     let command = commands.get(commandName) || commands.get(aliases.get(commandName));
 
     if (command) {
+      // --- Verificaciones de Permisos ---
+      const isGroup = from.endsWith('@g.us');
       const senderNumber = senderId.split('@')[0];
       const isOwner = config.ownerNumbers.includes(senderNumber);
 
-      // Lógica de Permisos Corregida
       if (command.category === 'propietario' && !isOwner) {
         return sock.sendMessage(from, { text: "Este comando es solo para el propietario del bot." });
       }
+
+      if (command.group && !isGroup) {
+        return sock.sendMessage(from, { text: "Este comando solo puede usarse en grupos." });
+      }
+
+      if (isGroup && (command.admin || command.botAdmin)) {
+        const groupMetadata = await sock.groupMetadata(from);
+        const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+
+        const botIsAdmin = groupMetadata.participants.some(p => p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin'));
+        const senderIsAdmin = groupMetadata.participants.some(p => p.id === senderId && (p.admin === 'admin' || p.admin === 'superadmin'));
+
+        if (command.botAdmin && !botIsAdmin) {
+          return sock.sendMessage(from, { text: "Necesito ser administrador del grupo para usar este comando." });
+        }
+
+        if (command.admin && !senderIsAdmin) {
+          return sock.sendMessage(from, { text: "Necesitas ser administrador del grupo para usar este comando." });
+        }
+      }
+
       if (command.category === 'subbots' && !isOwner) {
         // En un futuro, aquí se podría comprobar una lista de usuarios autorizados
         return sock.sendMessage(from, { text: "No tienes permiso para gestionar sub-bots." });
