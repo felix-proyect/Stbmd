@@ -1,52 +1,43 @@
 const demoteCommand = {
   name: "demote",
   category: "grupos",
-  description: "Degrada a un administrador a miembro común.",
+  description: "Quita el rol de administrador a un miembro del grupo.",
+  aliases: ["degradar"],
+  group: true,
+  admin: true,
+  botAdmin: true,
 
   async execute({ sock, msg, args }) {
-    const from = msg.key.remoteJid;
+    let user;
+    // Prioritize mentioned user over replied-to user
+    if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
+        user = msg.message.extendedTextMessage.contextInfo.mentionedJid[0];
+    } else if (msg.message?.extendedTextMessage?.contextInfo?.participant) {
+        user = msg.message.extendedTextMessage.contextInfo.participant;
+    } else {
+        const text = args.join(' ');
+        if (!text) {
+            return sock.sendMessage(msg.key.remoteJid, { text: `🚩 Para degradar a alguien, menciona a la persona o responde a su mensaje.` }, { quoted: msg });
+        }
+        // Fallback for number input, though mention/reply is preferred
+        const numberMatch = text.replace(/[^0-9]/g, '');
+        if (!numberMatch) {
+            return sock.sendMessage(msg.key.remoteJid, { text: `🚩 No se pudo identificar a un usuario válido.` }, { quoted: msg });
+        }
+        user = `${numberMatch}@s.whatsapp.net`;
+    }
 
-    if (!from.endsWith('@g.us')) {
-      await sock.sendMessage(from, { text: "Este comando solo se puede usar en grupos." }, { quoted: msg });
-      return;
+    if (!user) {
+        return sock.sendMessage(msg.key.remoteJid, { text: `🚩 No se pudo identificar al usuario.` }, { quoted: msg });
     }
 
     try {
-      const metadata = await sock.groupMetadata(from);
-      const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const botIsAdmin = metadata.participants.find(p => p.id === botJid)?.admin;
-
-      if (!botIsAdmin) {
-        await sock.sendMessage(from, { text: "Necesito ser administrador del grupo para usar este comando." }, { quoted: msg });
-        return;
-      }
-
-      const senderId = msg.key.participant || msg.key.remoteJid;
-      const senderIsAdmin = metadata.participants.find(p => p.id === senderId)?.admin;
-
-      if (!senderIsAdmin) {
-        await sock.sendMessage(from, { text: "No tienes permisos de administrador para usar este comando." }, { quoted: msg });
-        return;
-      }
-
-      let usersToDemote = [];
-      if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
-        usersToDemote = msg.message.extendedTextMessage.contextInfo.mentionedJid;
-      } else if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-        usersToDemote.push(msg.message.extendedTextMessage.contextInfo.participant);
-      }
-
-      if (usersToDemote.length === 0) {
-        await sock.sendMessage(from, { text: "Debes mencionar a un administrador o responder a su mensaje para degradarlo." }, { quoted: msg });
-        return;
-      }
-
-      await sock.groupParticipantsUpdate(from, usersToDemote, "demote");
-      await sock.sendMessage(from, { text: `✅ Se ha degradado a miembro a ${usersToDemote.map(u => `@${u.split('@')[0]}`).join(' ')}.` }, { quoted: msg, mentions: usersToDemote });
-
-    } catch (error) {
-      console.error("Error en el comando demote:", error);
-      await sock.sendMessage(from, { text: "Ocurrió un error al intentar degradar al administrador." }, { quoted: msg });
+        await sock.groupParticipantsUpdate(msg.key.remoteJid, [user], 'demote');
+        await sock.sendMessage(msg.key.remoteJid, { text: `✅ @${user.split('@')[0]} ya no es administrador.`, mentions: [user] }, { quoted: msg });
+        await sock.sendMessage(msg.key.remoteJid, { react: { text: '👍', key: msg.key } });
+    } catch (e) {
+        console.error("Error in demote command:", e);
+        await sock.sendMessage(msg.key.remoteJid, { text: `❌ Ocurrió un error al intentar degradar al usuario. Verifica que sea un miembro del grupo.` }, { quoted: msg });
     }
   }
 };

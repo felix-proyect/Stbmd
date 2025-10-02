@@ -1,52 +1,43 @@
 const promoteCommand = {
   name: "promote",
   category: "grupos",
-  description: "Asciende a un miembro a administrador del grupo.",
+  description: "Asigna el rol de administrador a un miembro del grupo.",
+  aliases: ["daradmin", "darpoder"],
+  group: true,
+  admin: true,
+  botAdmin: true,
 
   async execute({ sock, msg, args }) {
-    const from = msg.key.remoteJid;
+    let user;
+    // Prioritize mentioned user over replied-to user
+    if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
+        user = msg.message.extendedTextMessage.contextInfo.mentionedJid[0];
+    } else if (msg.message?.extendedTextMessage?.contextInfo?.participant) {
+        user = msg.message.extendedTextMessage.contextInfo.participant;
+    } else {
+        const text = args.join(' ');
+        if (!text) {
+            return sock.sendMessage(msg.key.remoteJid, { text: `🚩 Para ascender a alguien, menciona a la persona o responde a su mensaje.` }, { quoted: msg });
+        }
+        // Fallback for number input, though mention/reply is preferred
+        const numberMatch = text.replace(/[^0-9]/g, '');
+        if (!numberMatch) {
+            return sock.sendMessage(msg.key.remoteJid, { text: `🚩 No se pudo identificar a un usuario válido.` }, { quoted: msg });
+        }
+        user = `${numberMatch}@s.whatsapp.net`;
+    }
 
-    if (!from.endsWith('@g.us')) {
-      await sock.sendMessage(from, { text: "Este comando solo se puede usar en grupos." }, { quoted: msg });
-      return;
+    if (!user) {
+        return sock.sendMessage(msg.key.remoteJid, { text: `🚩 No se pudo identificar al usuario.` }, { quoted: msg });
     }
 
     try {
-      const metadata = await sock.groupMetadata(from);
-      const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const botIsAdmin = metadata.participants.find(p => p.id === botJid)?.admin;
-
-      if (!botIsAdmin) {
-        await sock.sendMessage(from, { text: "Necesito ser administrador del grupo para usar este comando." }, { quoted: msg });
-        return;
-      }
-
-      const senderId = msg.key.participant || msg.key.remoteJid;
-      const senderIsAdmin = metadata.participants.find(p => p.id === senderId)?.admin;
-
-      if (!senderIsAdmin) {
-        await sock.sendMessage(from, { text: "No tienes permisos de administrador para usar este comando." }, { quoted: msg });
-        return;
-      }
-
-      let usersToPromote = [];
-      if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
-        usersToPromote = msg.message.extendedTextMessage.contextInfo.mentionedJid;
-      } else if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-        usersToPromote.push(msg.message.extendedTextMessage.contextInfo.participant);
-      }
-
-      if (usersToPromote.length === 0) {
-        await sock.sendMessage(from, { text: "Debes mencionar a un usuario o responder a su mensaje para promoverlo." }, { quoted: msg });
-        return;
-      }
-
-      await sock.groupParticipantsUpdate(from, usersToPromote, "promote");
-      await sock.sendMessage(from, { text: `✅ Se ha ascendido a administrador a ${usersToPromote.map(u => `@${u.split('@')[0]}`).join(' ')}.` }, { quoted: msg, mentions: usersToPromote });
-
-    } catch (error) {
-      console.error("Error en el comando promote:", error);
-      await sock.sendMessage(from, { text: "Ocurrió un error al intentar promover al miembro." }, { quoted: msg });
+        await sock.groupParticipantsUpdate(msg.key.remoteJid, [user], 'promote');
+        await sock.sendMessage(msg.key.remoteJid, { text: `✅ @${user.split('@')[0]} ahora es administrador del grupo.`, mentions: [user] }, { quoted: msg });
+        await sock.sendMessage(msg.key.remoteJid, { react: { text: '👑', key: msg.key } });
+    } catch (e) {
+        console.error("Error in promote command:", e);
+        await sock.sendMessage(msg.key.remoteJid, { text: `❌ Ocurrió un error al intentar ascender al usuario. Verifica que sea un miembro del grupo.` }, { quoted: msg });
     }
   }
 };
