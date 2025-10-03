@@ -1,7 +1,7 @@
 import { commandUsage } from '../index.js';
 import os from 'os';
 import osu from 'node-os-utils';
-import human from 'human-readable';
+import { formatBytes } from '../lib/utils.js';
 
 const dashCommand = {
   name: "dash",
@@ -34,9 +34,9 @@ const dashCommand = {
 
       // 3. Memory and System Info
       const memInfo = await osu.mem.info();
-      const usedMemory = human.format.bytes(process.memoryUsage().rss);
-      const totalMemory = `${memInfo.totalMemMb} MB`;
-      const freeMemory = `${memInfo.freeMemMb} MB`;
+      const usedMemory = formatBytes(process.memoryUsage().rss);
+      const totalMemory = `${memInfo.totalMemMb.toFixed(2)} MB`;
+      const freeMemory = `${memInfo.freeMemMb.toFixed(2)} MB`;
 
       const cpuUsage = await osu.cpu.usage();
       const osInfo = `${os.type()} ${os.release()} (${os.arch()})`;
