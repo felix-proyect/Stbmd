@@ -3,7 +3,8 @@ import { commands, aliases, testCache, cooldowns, commandUsage } from './index.j
 import config from './config.js';
 import { readSettingsDb, readMaintenanceDb } from './lib/database.js';
 import print from './lib/print.js';
-import { normalizeJid } from './lib/utils.js';
+import { getUserFromMessage } from './lib/utils.js';
+import { areJidsSameUser } from '@whiskeysockets/baileys';
 
 const COOLDOWN_SECONDS = 5;
 const RESPONSE_DELAY_MS = 2000;
@@ -75,11 +76,10 @@ export async function handler(m, isSubBot = false) {
 
       if (isGroup && (command.admin || command.botAdmin)) {
         const groupMetadata = await sock.groupMetadata(from);
-        const botJid = normalizeJid(sock.user.id);
-        const normalizedSenderId = normalizeJid(senderId);
+        const botJid = sock.user.id;
 
-        const botIsAdmin = groupMetadata.participants.some(p => normalizeJid(p.id) === botJid && (p.admin === 'admin' || p.admin === 'superadmin'));
-        const senderIsAdmin = groupMetadata.participants.some(p => normalizeJid(p.id) === normalizedSenderId && (p.admin === 'admin' || p.admin === 'superadmin'));
+        const botIsAdmin = groupMetadata.participants.some(p => areJidsSameUser(p.id, botJid) && (p.admin === 'admin' || p.admin === 'superadmin'));
+        const senderIsAdmin = groupMetadata.participants.some(p => areJidsSameUser(p.id, senderId) && (p.admin === 'admin' || p.admin === 'superadmin'));
 
         if (command.botAdmin && !botIsAdmin) {
           return sock.sendMessage(from, { text: "Necesito ser administrador del grupo para usar este comando." });
