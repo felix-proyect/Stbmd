@@ -73,6 +73,7 @@ export const commands = new Map();
 export const aliases = new Map();
 export const testCache = new Map();
 export const cooldowns = new Map();
+export const commandUsage = new Map();
 
 
 
