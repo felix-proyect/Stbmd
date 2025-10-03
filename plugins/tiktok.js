@@ -64,17 +64,13 @@ const tiktokCommand = {
   aliases: ['ttdl', 'tt'],
 
   async execute({ sock, msg, text, usedPrefix, command }) {
-    if (!text || !text.includes("tiktok.com")) {
+    if (!text) {
       return sock.sendMessage(msg.key.remoteJid, {
-        text: `😕 Por favor, proporciona un enlace de TikTok válido.\n\nEjemplo: *${usedPrefix + command}* https://vt.tiktok.com/abcd/`
+        text: `😕 Por favor, proporciona un enlace para descargar.\n\nEjemplo: *${usedPrefix + command}* <enlace>`
       }, { quoted: msg });
     }
 
-    const urlMatch = text.match(/https?:\/\/\S+/);
-    if (!urlMatch) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "No se encontró un enlace válido en el mensaje." }, { quoted: msg });
-    }
-    const url = urlMatch[0];
+    const url = text.trim();
 
     await sock.sendMessage(msg.key.remoteJid, { react: { text: "⏳", key: msg.key } });
 
