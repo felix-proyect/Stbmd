@@ -7,7 +7,7 @@ const demoteCommand = {
   aliases: ["degradar"],
   group: true,
   admin: true,
-  botAdmin: true,
+  botAdmin: false,
 
   async execute({ sock, msg, args }) {
     const user = getUserFromMessage(msg, args);
