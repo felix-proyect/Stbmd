@@ -3,6 +3,7 @@ import { commands, aliases, testCache, cooldowns } from './index.js';
 import config from './config.js';
 import { readSettingsDb, readMaintenanceDb } from './lib/database.js';
 import print from './lib/print.js';
+import { normalizeJid } from './lib/utils.js';
 
 const COOLDOWN_SECONDS = 5;
 const RESPONSE_DELAY_MS = 2000;
@@ -74,10 +75,11 @@ export async function handler(m, isSubBot = false) {
 
       if (isGroup && (command.admin || command.botAdmin)) {
         const groupMetadata = await sock.groupMetadata(from);
-        const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+        const botJid = normalizeJid(sock.user.id);
+        const normalizedSenderId = normalizeJid(senderId);
 
-        const botIsAdmin = groupMetadata.participants.some(p => p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin'));
-        const senderIsAdmin = groupMetadata.participants.some(p => p.id === senderId && (p.admin === 'admin' || p.admin === 'superadmin'));
+        const botIsAdmin = groupMetadata.participants.some(p => normalizeJid(p.id) === botJid && (p.admin === 'admin' || p.admin === 'superadmin'));
+        const senderIsAdmin = groupMetadata.participants.some(p => normalizeJid(p.id) === normalizedSenderId && (p.admin === 'admin' || p.admin === 'superadmin'));
 
         if (command.botAdmin && !botIsAdmin) {
           return sock.sendMessage(from, { text: "Necesito ser administrador del grupo para usar este comando." });
