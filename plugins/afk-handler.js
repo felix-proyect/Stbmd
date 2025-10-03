@@ -1,5 +1,4 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
-import { areJidsSameUser } from '@whiskeysockets/baileys';
 
 // Helper function to format AFK duration
 function formatAfkDuration(ms) {
@@ -14,7 +13,7 @@ function formatAfkDuration(ms) {
   if (minutes > 0) duration += `${minutes}m `;
   if (seconds > 0) duration += `${seconds}s`;
 
-  return duration.trim();
+  return duration.trim() || 'un momento';
 }
 
 const afkHandler = {
@@ -33,9 +32,8 @@ const afkHandler = {
     if (users[senderId]?.afk) {
       const afkInfo = users[senderId].afk;
       const afkDuration = Date.now() - afkInfo.time;
-      const durationStr = formatAfkDuration(afkDuration);
 
-      const welcomeBackMsg = `👋 @${senderId.split('@')[0]} ha vuelto.\nEstuvo AFK por ${durationStr}.`;
+      const welcomeBackMsg = `👋 @${senderId.split('@')[0]} ha vuelto.\nEstuvo AFK por ${formatAfkDuration(afkDuration)}.`;
       await sock.sendMessage(from, { text: welcomeBackMsg, mentions: [senderId] }, { quoted: msg });
 
       delete users[senderId].afk;
@@ -49,9 +47,8 @@ const afkHandler = {
         if (users[jid]?.afk) {
           const afkInfo = users[jid].afk;
           const afkDuration = Date.now() - afkInfo.time;
-          const durationStr = formatAfkDuration(afkDuration);
 
-          const afkNoticeMsg = `😴 El usuario @${jid.split('@')[0]} está AFK.\nMotivo: ${afkInfo.reason}\nDesde hace: ${durationStr}`;
+          const afkNoticeMsg = `😴 El usuario @${jid.split('@')[0]} está AFK.\nMotivo: ${afkInfo.reason}\nDesde hace: ${formatAfkDuration(afkDuration)}`;
           await sock.sendMessage(from, { text: afkNoticeMsg, mentions: [jid] }, { quoted: msg });
         }
       }
