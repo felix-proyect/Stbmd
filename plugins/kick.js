@@ -1,64 +1,41 @@
+import { getUserFromMessage } from '../lib/utils.js';
+import { areJidsSameUser } from '@whiskeysockets/baileys';
+
 const kickCommand = {
   name: "kick",
   category: "grupos",
   description: "Elimina a un miembro del grupo.",
+  group: true,
+  admin: true,
+  botAdmin: false, // As requested, don't check if bot is admin
 
   async execute({ sock, msg, args }) {
-    const from = msg.key.remoteJid;
+    const userToKick = getUserFromMessage(msg, args);
 
-    if (!from.endsWith('@g.us')) {
-      await sock.sendMessage(from, { text: "Este comando solo se puede usar en grupos." }, { quoted: msg });
-      return;
+    if (!userToKick) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "Debes mencionar a un usuario o responder a su mensaje para eliminarlo." }, { quoted: msg });
     }
 
     try {
-      const metadata = await sock.groupMetadata(from);
-      const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const botIsAdmin = metadata.participants.find(p => p.id === botJid)?.admin;
+      const metadata = await sock.groupMetadata(msg.key.remoteJid);
+      const botJid = sock.user.id;
 
-      if (!botIsAdmin) {
-        await sock.sendMessage(from, { text: "Necesito ser administrador del grupo para usar este comando." }, { quoted: msg });
-        return;
+      // Check if trying to kick the bot
+      if (areJidsSameUser(userToKick, botJid)) {
+        return sock.sendMessage(msg.key.remoteJid, { text: "No puedo eliminarme a mí mismo." }, { quoted: msg });
       }
 
-      const senderId = msg.key.participant || msg.key.remoteJid;
-      const senderIsAdmin = metadata.participants.find(p => p.id === senderId)?.admin;
-
-      if (!senderIsAdmin) {
-        await sock.sendMessage(from, { text: "No tienes permisos de administrador para usar este comando." }, { quoted: msg });
-        return;
+      // Check if trying to kick the group owner
+      if (metadata.owner && areJidsSameUser(userToKick, metadata.owner)) {
+        return sock.sendMessage(msg.key.remoteJid, { text: "No se puede eliminar al propietario del grupo." }, { quoted: msg });
       }
 
-      let usersToKick = [];
-      if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
-        usersToKick = msg.message.extendedTextMessage.contextInfo.mentionedJid;
-      } else if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-        usersToKick.push(msg.message.extendedTextMessage.contextInfo.participant);
-      }
-
-      if (usersToKick.length === 0) {
-        await sock.sendMessage(from, { text: "Debes mencionar a un usuario o responder a su mensaje para eliminarlo." }, { quoted: msg });
-        return;
-      }
-
-      const groupOwner = metadata.owner;
-      const selfKick = usersToKick.find(u => u === botJid);
-      if (selfKick) {
-        await sock.sendMessage(from, { text: "No puedo eliminarme a mí mismo." }, { quoted: msg });
-        return;
-      }
-      const ownerKick = usersToKick.find(u => u === groupOwner);
-      if (ownerKick) {
-         await sock.sendMessage(from, { text: "No se puede eliminar al propietario del grupo." }, { quoted: msg });
-        return;
-      }
-
-      await sock.groupParticipantsUpdate(from, usersToKick, "remove");
-      await sock.sendMessage(from, { text: `✅ Se ha eliminado a ${usersToKick.map(u => `@${u.split('@')[0]}`).join(' ')} del grupo.` }, { quoted: msg, mentions: usersToKick });
+      await sock.groupParticipantsUpdate(msg.key.remoteJid, [userToKick], "remove");
+      await sock.sendMessage(msg.key.remoteJid, { text: `✅ Se ha eliminado a @${userToKick.split('@')[0]} del grupo.`, mentions: [userToKick] }, { quoted: msg });
 
     } catch (error) {
       console.error("Error en el comando kick:", error);
-      await sock.sendMessage(from, { text: "Ocurrió un error al intentar eliminar al miembro. Es posible que sea administrador." }, { quoted: msg });
+      await sock.sendMessage(msg.key.remoteJid, { text: "❌ Ocurrió un error al intentar eliminar al miembro. Es posible que sea administrador o que yo no tenga permisos." }, { quoted: msg });
     }
   }
 };
