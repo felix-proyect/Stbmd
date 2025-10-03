@@ -2,36 +2,22 @@ const linkCommand = {
   name: "link",
   category: "grupos",
   description: "Obtiene el enlace de invitación del grupo.",
+  group: true, // Standard property to ensure it's only used in groups
 
-  async execute({ sock, msg, args }) {
+  async execute({ sock, msg }) {
     const from = msg.key.remoteJid;
 
-    // 1. Verificar si es un grupo
-    if (!from.endsWith('@g.us')) {
-      await sock.sendMessage(from, { text: "Este comando solo se puede usar en grupos." }, { quoted: msg });
-      return;
-    }
-
     try {
-      // 2. Obtener metadatos y verificar si el bot es admin
-      const metadata = await sock.groupMetadata(from);
-      const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const botIsAdmin = metadata.participants.find(p => p.id === botJid)?.admin;
-
-      if (!botIsAdmin) {
-        await sock.sendMessage(from, { text: "Necesito ser administrador del grupo para obtener el enlace de invitación." }, { quoted: msg });
-        return;
-      }
-
-      // 3. Obtener y enviar el enlace
+      // Attempt to get and send the link directly.
+      // If the bot is not an admin, this will throw an error which is caught below.
       const inviteCode = await sock.groupInviteCode(from);
       const inviteLink = `https://chat.whatsapp.com/${inviteCode}`;
 
       await sock.sendMessage(from, { text: `Aquí tienes el enlace de invitación del grupo:\n\n${inviteLink}` }, { quoted: msg });
 
     } catch (error) {
-      console.error("Error en el comando link:", error);
-      await sock.sendMessage(from, { text: "Ocurrió un error al obtener el enlace del grupo." }, { quoted: msg });
+      console.error("Error in link command:", error);
+      await sock.sendMessage(from, { text: "❌ Ocurrió un error. No pude obtener el enlace, probablemente porque no soy administrador." }, { quoted: msg });
     }
   }
 };
