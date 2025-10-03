@@ -29,7 +29,8 @@ export async function handler(m, isSubBot = false) {
     const autoHandlers = Array.from(commands.values()).filter(cmd => cmd.isAutoHandler);
     for (const handler of autoHandlers) {
       try {
-        // Pasamos el cuerpo del mensaje para evitar que cada handler lo recalcule.
+        // This was the error. The execute call was missing the 'body' parameter.
+        // Now we pass it so the auto-handlers can read the message content.
         await handler.execute({ sock, msg, body });
       } catch (error) {
         console.error(`Error en el auto-handler ${handler.name}:`, error);
