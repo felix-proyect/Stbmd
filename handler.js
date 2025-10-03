@@ -1,5 +1,5 @@
 // Este es el manejador de mensajes que usarán los sub-bots y el bot principal.
-import { commands, aliases, testCache, cooldowns } from './index.js';
+import { commands, aliases, testCache, cooldowns, commandUsage } from './index.js';
 import config from './config.js';
 import { readSettingsDb, readMaintenanceDb } from './lib/database.js';
 import print from './lib/print.js';
@@ -113,6 +113,10 @@ export async function handler(m, isSubBot = false) {
 
       // Ejecución
       try {
+        // Track command usage
+        const currentCount = commandUsage.get(command.name) || 0;
+        commandUsage.set(command.name, currentCount + 1);
+
         await new Promise(resolve => setTimeout(resolve, RESPONSE_DELAY_MS));
         // Pasamos 'commandName' para que los comandos puedan saber con qué alias fueron llamados.
         await command.execute({ sock, msg, args, commands, config, testCache, isOwner, commandName });
