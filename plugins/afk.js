@@ -5,9 +5,9 @@ const afkCommand = {
   category: "util",
   description: "Establece tu estado como AFK (Lejos del teclado).",
 
-  async execute({ sock, msg, text }) {
+  async execute({ sock, msg, args }) {
     const userId = msg.sender;
-    const reason = text.trim() || 'Sin motivo';
+    const reason = args.join(' ').trim() || 'Sin motivo';
     const afkTime = Date.now();
 
     try {
