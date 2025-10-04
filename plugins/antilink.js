@@ -20,12 +20,11 @@ const antilinkPlugin = {
    * - `args` is passed for commands.
    */
   async execute({ sock, msg, args, body }) {
-    if (body !== undefined) {
-      // This is an auto-handler call
-      return this.handler({ sock, msg, body });
-    } else {
-      // This is a command call
+    // If 'args' is defined, it's a command call. Otherwise, it's an auto-handler call.
+    if (args) {
       return this.command({ sock, msg, args });
+    } else {
+      return this.handler({ sock, msg, body });
     }
   },
 
@@ -42,7 +41,9 @@ const antilinkPlugin = {
 
     try {
       const metadata = await sock.groupMetadata(from);
-      const senderIsAdmin = metadata.participants.some(p => areJidsSameUser(p.id, msg.sender) && p.admin);
+      const senderParticipant = metadata.participants.find(p => areJidsSameUser(p.id, msg.sender));
+      const senderIsAdmin = senderParticipant?.admin === 'admin' || senderParticipant?.admin === 'superadmin';
+
       if (!senderIsAdmin) {
         return sock.sendMessage(from, { text: "No tienes permisos de administrador para usar este comando." }, { quoted: msg });
       }
@@ -89,7 +90,8 @@ const antilinkPlugin = {
     if (!antilinkLevel) return; // Antilink is disabled for this group (level 0 or undefined)
 
     const metadata = await sock.groupMetadata(from);
-    const senderIsAdmin = metadata.participants.some(p => areJidsSameUser(p.id, msg.sender) && p.admin);
+    const senderParticipant = metadata.participants.find(p => areJidsSameUser(p.id, msg.sender));
+    const senderIsAdmin = senderParticipant?.admin === 'admin' || senderParticipant?.admin === 'superadmin';
     if (senderIsAdmin) return;
 
     let isForbiddenLink = false;

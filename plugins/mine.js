@@ -36,6 +36,11 @@ const mineCommand = {
     const coalGained = Math.floor(Math.random() * 4) + 1; // 1-4 coal
     const ironGained = Math.random() > 0.6 ? Math.floor(Math.random() * 2) + 1 : 0; // 40% chance of 1-2 iron
 
+    // Ensure inventory object exists
+    if (!user.inventory) {
+      user.inventory = {};
+    }
+
     // Update user data
     user.coins = (user.coins || 0) + coinEarnings;
     user.inventory.stone = (user.inventory.stone || 0) + stoneGained;
