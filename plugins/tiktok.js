@@ -1,43 +1,55 @@
 import axios from 'axios';
+import config from '../config.js';
 
 const tiktokCommand = {
   name: "tiktok",
   category: "downloader",
-  description: "Descarga un video de TikTok sin marca de agua.",
+  description: "Descarga un video de TikTok sin marca de agua usando la API de RapidAPI.",
   aliases: ['ttdl', 'tt'],
 
   async execute({ sock, msg, text, usedPrefix, command }) {
+    const apiKey = config.api.tiktok;
+    if (!apiKey) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "La API key para este comando no está configurada por el propietario del bot en `config.js`." }, { quoted: msg });
+    }
+
     if (!text) {
       return sock.sendMessage(msg.key.remoteJid, {
-        text: `😕 Por favor, proporciona un enlace para descargar.\n\nEjemplo: *${usedPrefix + command}* <enlace>`
+        text: `😕 Por favor, proporciona un enlace de TikTok para descargar.\n\nEjemplo: *${usedPrefix + command}* <enlace>`
       }, { quoted: msg });
     }
 
     const url = text.trim();
+    if (!url.includes('tiktok.com')) {
+        return sock.sendMessage(msg.key.remoteJid, { text: "Por favor, proporciona un enlace de TikTok válido." }, { quoted: msg });
+    }
 
     try {
       await sock.sendMessage(msg.key.remoteJid, { react: { text: "⏳", key: msg.key } });
 
-      const apiUrl = `https://delirius-apiofc.vercel.app/download/tiktok?url=${encodeURIComponent(url)}`;
-      const { data } = await axios.get(apiUrl);
+      const options = {
+        method: 'GET',
+        url: 'https://tiktok-video-downloader-api.p.rapidapi.com/media',
+        params: {
+          videoUrl: url
+        },
+        headers: {
+          'x-rapidapi-key': apiKey,
+          'x-rapidapi-host': 'tiktok-video-downloader-api.p.rapidapi.com'
+        }
+      };
 
-      if (!data.status || !data.data || !data.data.meta?.media) {
-        throw new Error("No se pudo obtener la información del video desde la API.");
+      const response = await axios.request(options);
+      const { data } = response;
+
+      if (!data || !data.downloadUrl) {
+        throw new Error("No se pudo obtener la URL de descarga desde la API.");
       }
 
-      // Find the video URL without watermark
-      const videoUrl = data.data.meta.media.find(v => v.type === "video")?.org;
-      if (!videoUrl) {
-        throw new Error("No se encontró la URL del video sin marca de agua en la respuesta.");
-      }
-
-      const { title, author, like, comment, share } = data.data;
-      const caption = `*${author.nickname}* (@${author.username})\n\n` +
-                      `*Título:* ${title || 'Sin título'}\n` +
-                      `*Likes:* ${like} | *Comentarios:* ${comment} | *Compartidos:* ${share}`;
+      const caption = data.title ? `*${data.title}*` : 'Video de TikTok descargado.';
 
       await sock.sendMessage(msg.key.remoteJid, {
-        video: { url: videoUrl },
+        video: { url: data.downloadUrl },
         caption: caption,
       }, { quoted: msg });
 
@@ -47,7 +59,7 @@ const tiktokCommand = {
       console.error("Error in tiktok command:", e);
       await sock.sendMessage(msg.key.remoteJid, { react: { text: "❌", key: msg.key } });
       await sock.sendMessage(msg.key.remoteJid, {
-        text: `😔 Lo siento, ocurrió un error al descargar el video.\n> ${e.message}`
+        text: `😔 Lo siento, ocurrió un error al descargar el video.\n> La API puede estar caída o el enlace es inválido.`
       }, { quoted: msg });
     }
   }

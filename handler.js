@@ -29,8 +29,7 @@ export async function handler(m, isSubBot = false) {
     const autoHandlers = Array.from(commands.values()).filter(cmd => cmd.isAutoHandler);
     for (const handler of autoHandlers) {
       try {
-        // This was the error. The execute call was missing the 'body' parameter.
-        // Now we pass it so the auto-handlers can read the message content.
+        // Pass the body to all auto-handlers so they can process message content
         await handler.execute({ sock, msg, body });
       } catch (error) {
         console.error(`Error en el auto-handler ${handler.name}:`, error);
@@ -79,8 +78,13 @@ export async function handler(m, isSubBot = false) {
         const groupMetadata = await sock.groupMetadata(from);
         const botJid = sock.user.id;
 
-        const botIsAdmin = groupMetadata.participants.some(p => areJidsSameUser(p.id, botJid) && (p.admin === 'admin' || p.admin === 'superadmin'));
-        const senderIsAdmin = groupMetadata.participants.some(p => areJidsSameUser(p.id, senderId) && (p.admin === 'admin' || p.admin === 'superadmin'));
+        // Find the participant objects for the bot and the sender using a more robust check
+        const botParticipant = groupMetadata.participants.find(p => areJidsSameUser(p.id, botJid));
+        const senderParticipant = groupMetadata.participants.find(p => [msg.sender, msg.lid].some(sJid => areJidsSameUser(p.id, sJid)));
+
+        // Check their admin status safely
+        const botIsAdmin = botParticipant?.admin === 'admin' || botParticipant?.admin === 'superadmin';
+        const senderIsAdmin = senderParticipant?.admin === 'admin' || senderParticipant?.admin === 'superadmin';
 
         if (command.botAdmin && !botIsAdmin) {
           return sock.sendMessage(from, { text: "Necesito ser administrador del grupo para usar este comando." });

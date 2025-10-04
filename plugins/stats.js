@@ -36,11 +36,11 @@ const statsCommand = {
                          `*Defensa:* ${user.defense}\n` +
                          `*Velocidad:* ${user.speed}\n\n` +
                          `*🎒 Inventario de Recursos 🎒*\n` +
-                         `*Madera:* ${user.inventory.wood || 0}\n` +
-                         `*Piedra:* ${user.inventory.stone || 0}\n` +
-                         `*Carbón:* ${user.inventory.coal || 0}\n` +
-                         `*Hierro:* ${user.inventory.iron || 0}\n` +
-                         `*Diamantes:* ${user.inventory.diamonds || 0}`;
+                         `*Madera:* ${user.inventory.wood || 0} 🪵\n` +
+                         `*Piedra:* ${user.inventory.stone || 0} 🪨\n` +
+                         `*Carbón:* ${user.inventory.coal || 0} ⚫\n` +
+                         `*Hierro:* ${user.inventory.iron || 0} 🔩\n` +
+                         `*Diamantes:* ${user.inventory.diamonds || 0} 💎`;
 
     await sock.sendMessage(msg.key.remoteJid, { text: statsMessage }, { quoted: msg });
   }
