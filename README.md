@@ -24,6 +24,31 @@
     npm install
     ```
 
+### Instalación en Termux
+
+Para instalar y ejecutar el bot en Termux, sigue estos pasos:
+
+1.  **Actualiza los paquetes de Termux:**
+    ```bash
+    pkg update && pkg upgrade
+    ```
+2.  **Instala las dependencias necesarias (git y nodejs):**
+    ```bash
+    pkg install git nodejs -y
+    ```
+3.  **Clona el repositorio:**
+    ```bash
+    git clone https://github.com/Andresv27728/bit.pf.git
+    ```
+4.  **Navega a la carpeta del bot:**
+    ```bash
+    cd bit.pf
+    ```
+5.  **Instala las dependencias del bot:**
+    ```bash
+    npm install
+    ```
+
 ## Cómo Ejecutar el Bot
 
 1.  **Configura tus datos:** Abre el archivo `config.js` y modifica los valores de `botName` y `ownerName`.
