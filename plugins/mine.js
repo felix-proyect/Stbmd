@@ -1,8 +1,9 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 const mineCommand = {
   name: "mine",
-  category: "economia",
+  category: "rpg",
   description: "Usa tu pico para minar gemas y conseguir monedas. Requiere un 'Pico de Hierro'.",
   aliases: ["minar"],
 
@@ -15,6 +16,9 @@ const mineCommand = {
     if (!user) {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
+
+    // Inicializar datos del usuario para asegurar compatibilidad
+    initializeRpgUser(user);
 
     // Verificar si el usuario tiene un pico
     if (!user.inventory || !user.inventory.pico || user.inventory.pico < 1) {
@@ -55,9 +59,6 @@ const mineCommand = {
     const ironGained = Math.random() > ironChance ? Math.floor(Math.random() * 2) + 1 : 0;
     const goldGained = Math.random() > goldChance ? 1 : 0;
     const mithrilGained = Math.random() > mithrilChance ? 1 : 0;
-
-    // Ensure inventory object exists
-    if (!user.inventory) user.inventory = {};
 
     // Update user data
     user.coins = (user.coins || 0) + coinEarnings;

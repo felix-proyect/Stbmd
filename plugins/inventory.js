@@ -1,5 +1,6 @@
 import { readUsersDb } from '../lib/database.js';
 import { shopItems } from '../lib/shop-items.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 // Define a map for resources to give them pretty names and emojis
 const resourceMap = {
@@ -22,7 +23,7 @@ const equipmentNameMap = {
 
 const inventoryCommand = {
   name: "inventory",
-  category: "economia",
+  category: "rpg",
   description: "Muestra los artículos y recursos que posees.",
   aliases: ["inv"],
 
@@ -34,6 +35,9 @@ const inventoryCommand = {
     if (!user) {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
+
+    // Inicializar datos del usuario para asegurar compatibilidad
+    initializeRpgUser(user);
 
     const hasInventory = user.inventory && Object.keys(user.inventory).some(key => user.inventory[key] > 0);
     const hasEquipment = user.equipment && Object.keys(user.equipment).length > 0;
@@ -56,6 +60,7 @@ const inventoryCommand = {
         for (const itemType in user.equipment) {
             const item = user.equipment[itemType];
             const itemName = equipmentNameMap[itemType] || "Objeto Desconocido";
+
             equipmentMessage += `*${itemName} (Nivel ${item.level})*\n`;
             if (item.attack) equipmentMessage += `> Ataque: +${item.attack}\n`;
             if (item.defense) equipmentMessage += `> Defensa: +${item.defense}\n`;

@@ -1,4 +1,5 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 const professions = {
   blacksmith: {
@@ -32,6 +33,9 @@ const professionsCommand = {
     if (!user) {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
+
+    // Inicializar datos del usuario para asegurar compatibilidad
+    initializeRpgUser(user);
 
     const action = args[0]?.toLowerCase();
 
