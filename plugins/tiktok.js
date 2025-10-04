@@ -3,8 +3,8 @@ import config from '../config.js';
 
 const tiktokCommand = {
   name: "tiktok",
-  category: "downloader",
-  description: "Descarga un video de TikTok sin marca de agua usando la API de RapidAPI.",
+  category: "descargas",
+  description: "Descarga un video de TikTok sin marca de agua.",
   aliases: ['ttdl', 'tt'],
 
   async execute({ sock, msg, text, usedPrefix, command }) {
@@ -15,14 +15,11 @@ const tiktokCommand = {
 
     if (!text) {
       return sock.sendMessage(msg.key.remoteJid, {
-        text: `😕 Por favor, proporciona un enlace de TikTok para descargar.\n\nEjemplo: *${usedPrefix + command}* <enlace>`
+        text: `😕 Por favor, proporciona un enlace o texto para buscar en TikTok.\n\nEjemplo: *${usedPrefix + command}* <enlace_o_texto>`
       }, { quoted: msg });
     }
 
-    const url = text.trim();
-    if (!url.includes('tiktok.com')) {
-        return sock.sendMessage(msg.key.remoteJid, { text: "Por favor, proporciona un enlace de TikTok válido." }, { quoted: msg });
-    }
+    const videoUrl = text.trim();
 
     try {
       await sock.sendMessage(msg.key.remoteJid, { react: { text: "⏳", key: msg.key } });
@@ -31,7 +28,7 @@ const tiktokCommand = {
         method: 'GET',
         url: 'https://tiktok-video-downloader-api.p.rapidapi.com/media',
         params: {
-          videoUrl: url
+          videoUrl: videoUrl
         },
         headers: {
           'x-rapidapi-key': apiKey,
@@ -43,7 +40,7 @@ const tiktokCommand = {
       const { data } = response;
 
       if (!data || !data.downloadUrl) {
-        throw new Error("No se pudo obtener la URL de descarga desde la API.");
+        throw new Error("La API no devolvió una URL de descarga válida.");
       }
 
       const caption = data.title ? `*${data.title}*` : 'Video de TikTok descargado.';
@@ -55,11 +52,11 @@ const tiktokCommand = {
 
       await sock.sendMessage(msg.key.remoteJid, { react: { text: "✅", key: msg.key } });
 
-    } catch (e) {
-      console.error("Error in tiktok command:", e);
+    } catch (error) {
+      console.error("Error en el comando 'tiktok':", error.message);
       await sock.sendMessage(msg.key.remoteJid, { react: { text: "❌", key: msg.key } });
       await sock.sendMessage(msg.key.remoteJid, {
-        text: `😔 Lo siento, ocurrió un error al descargar el video.\n> La API puede estar caída o el enlace es inválido.`
+        text: `😔 Lo siento, ocurrió un error.\n\nLa API no pudo procesar la solicitud. Asegúrate de que el enlace sea correcto o inténtalo de nuevo más tarde.`
       }, { quoted: msg });
     }
   }
