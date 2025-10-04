@@ -1,5 +1,8 @@
+import { readSettingsDb } from '../lib/database.js';
+
 // 🔱 Mapa de emojis para las categorías temático de Gura
 const categoryEmojis = {
+  'rpg': '⚔️',
   'general': '🔱',
   'descargas': '🌊',
   'diversion': '🐟',
@@ -10,7 +13,8 @@ const categoryEmojis = {
   'informacion': '📚',
   'sub-bots': '🤖',
   'ia': '🧠',
-  'otros': '⚙️'
+  'otros': '⚙️',
+  'rpg': '⚔️'
 };
 
 // 🌊 Estilos de bordes temáticos de Gura
@@ -31,6 +35,12 @@ const menuCommand = {
   async execute({ sock, msg, commands, config }) {
     const categories = {};
     const senderName = msg.pushName || 'Chumbie';
+    const from = msg.key.remoteJid;
+
+    // --- Verificación de RPG activado ---
+    const settings = readSettingsDb();
+    const groupSettings = settings[from] || {};
+    const isRpgDisabled = from.endsWith('@g.us') && groupSettings.rpgEnabled === false;
 
     // 🔀 Elegir un estilo aleatorio
     const border = borders[Math.floor(Math.random() * borders.length)];
@@ -38,6 +48,10 @@ const menuCommand = {
     // Agrupar comandos por categoría
     commands.forEach(command => {
       if (!command.category || command.name === 'test') return;
+
+      // Ocultar la categoría RPG si está desactivada en el grupo
+      if (isRpgDisabled && command.category === 'rpg') return;
+
       const category = command.category.toLowerCase();
       if (!categories[category]) categories[category] = [];
       categories[category].push(command);
@@ -54,7 +68,7 @@ const menuCommand = {
     menuText += `${border.bot}\n\n`;
 
     for (const category of sortedCategories) {
-      const emoji = categoryEmojis[category] || '🔱';
+      const emoji = categoryEmojis[category] || '⚙️';
       menuText += `${border.top} ${emoji} *${category.toUpperCase()}* 』\n`;
 
       const commandList = categories[category]

@@ -78,6 +78,12 @@ export async function handler(m, isSubBot = false) {
       }
       // --- Fin de la Verificación ---
 
+      // --- Verificación de Modo RPG ---
+      if (isGroup && settings[from]?.rpgEnabled === false && command.category === 'rpg' && !isOwner) {
+        return sock.sendMessage(from, { text: "Los comandos de RPG están desactivados en este grupo." }, { quoted: msg });
+      }
+      // --- Fin de la Verificación ---
+
       // --- Verificaciones de Permisos por Comando ---
       if (command.category === 'propietario' && !isOwner) {
         return sock.sendMessage(from, { text: "Este comando es solo para el propietario del bot." });
