@@ -27,21 +27,27 @@ const huntCommand = {
 
     user.lastHunt = now;
 
+    // --- Calculate total strength including equipment bonuses ---
+    let totalStrength = user.strength;
+    if (user.equipment && user.equipment.sword) {
+      totalStrength += user.equipment.sword.attack;
+    }
+
     const xpGained = Math.floor(Math.random() * 30) + 10; // 10-40 XP
     user.xp += xpGained;
 
     let lootMessage = `Ganaste *${xpGained} XP* por la cacería.\n`;
+
+    // The hunt's success is now influenced by strength
+    const successChance = 0.5 + (totalStrength / 100); // Base 50% chance, +1% per 1 strength
     const lootRoll = Math.random();
 
-    // Simple loot system based on roll
-    if (lootRoll < 0.6) { // 60% chance de monedas
-        const coinsGained = Math.floor(Math.random() * 50) + 20; // 20-70 coins
-        user.coins += coinsGained;
-        lootMessage += `Obtuviste *${coinsGained} monedas* de un jabalí.`;
-    } else if (lootRoll < 0.9) { // 30% chance de item
-        lootMessage += `Encontraste un objeto raro en un nido de grifos, pero aún no se ha implementado.`;
-    } else { // 10% chance de nada
-        lootMessage += `El ciervo que perseguías fue más rápido y escapó.`;
+    if (lootRoll < successChance) {
+      const coinsGained = Math.floor(Math.random() * (20 + totalStrength)) + 10; // Better strength, better coins
+      user.coins += coinsGained;
+      lootMessage += `¡Cacería exitosa! Atrapaste a tu presa y ganaste *${coinsGained} monedas*.`;
+    } else {
+      lootMessage += `La criatura era demasiado fuerte y escapó. ¡Necesitas más fuerza!`;
     }
 
     const levelUpMessage = checkLevelUp(user);
