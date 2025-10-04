@@ -7,7 +7,17 @@ const resourceMap = {
   stone: { name: 'Piedra', emoji: '🪨' },
   coal: { name: 'Carbón', emoji: '⚫' },
   iron: { name: 'Hierro', emoji: '🔩' },
+  gold: { name: 'Oro', emoji: '🌟' },
+  mithril: { name: 'Mithril', emoji: '✨' },
   diamonds: { name: 'Diamantes', emoji: '💎' }
+};
+
+// A map for equipment names, as they are not "shop items"
+const equipmentNameMap = {
+    sword: "Espada de Hierro",
+    armor: "Armadura de Hierro",
+    gilded_sword: "Espada Dorada",
+    mithril_armor: "Armadura de Mithril"
 };
 
 const inventoryCommand = {
@@ -25,41 +35,57 @@ const inventoryCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
-    if (!user.inventory || Object.keys(user.inventory).every(key => user.inventory[key] === 0)) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "Tu inventario está vacío." }, { quoted: msg });
-    }
+    const hasInventory = user.inventory && Object.keys(user.inventory).some(key => user.inventory[key] > 0);
+    const hasEquipment = user.equipment && Object.keys(user.equipment).length > 0;
 
-    let itemsMessage = "🏷️ *Artículos*\n\n";
-    let resourcesMessage = "🧱 *Recursos*\n\n";
-    let hasItems = false;
-    let hasResources = false;
-
-    for (const itemId in user.inventory) {
-      const quantity = user.inventory[itemId];
-      if (!quantity || quantity === 0) continue; // Skip items with 0 quantity
-
-      // Check if it's a shop item
-      const shopItem = shopItems.find(i => i.id === itemId);
-      if (shopItem) {
-        itemsMessage += `*${shopItem.name}* x${quantity}\n`;
-        itemsMessage += `> _${shopItem.description}_\n\n`;
-        hasItems = true;
-      }
-      // Check if it's a resource
-      else if (resourceMap[itemId]) {
-        const resource = resourceMap[itemId];
-        resourcesMessage += `${resource.emoji} *${resource.name}:* ${quantity}\n`;
-        hasResources = true;
-      }
+    if (!hasInventory && !hasEquipment) {
+        return sock.sendMessage(msg.key.remoteJid, { text: "Tu inventario y equipamiento están vacíos." }, { quoted: msg });
     }
 
     let finalMessage = "🎒 *Tu Inventario*\n\n";
-    if (!hasItems && !hasResources) {
-      finalMessage = "Tu inventario está vacío.";
-    } else {
-      if (hasItems) finalMessage += itemsMessage;
-      if (hasResources) finalMessage += `\n${resourcesMessage}`;
+    let equipmentMessage = "🗡️ *Equipamiento*\n\n";
+    let itemsMessage = "🏷️ *Artículos*\n\n";
+    let resourcesMessage = "🧱 *Recursos*\n\n";
+
+    let hasShownEquipment = false;
+    let hasShownItems = false;
+    let hasShownResources = false;
+
+    // 1. Display Equipment
+    if (hasEquipment) {
+        for (const itemType in user.equipment) {
+            const item = user.equipment[itemType];
+            const itemName = equipmentNameMap[itemType] || "Objeto Desconocido";
+            equipmentMessage += `*${itemName} (Nivel ${item.level})*\n`;
+            if (item.attack) equipmentMessage += `> Ataque: +${item.attack}\n`;
+            if (item.defense) equipmentMessage += `> Defensa: +${item.defense}\n`;
+            equipmentMessage += `> Durabilidad: ${item.durability}/${item.maxDurability}\n\n`;
+            hasShownEquipment = true;
+        }
     }
+
+    // 2. Display Inventory (Items and Resources)
+    if (hasInventory) {
+        for (const itemId in user.inventory) {
+          const quantity = user.inventory[itemId];
+          if (!quantity || quantity === 0) continue;
+
+          const shopItem = shopItems.find(i => i.id === itemId);
+          if (shopItem) {
+            itemsMessage += `*${shopItem.name}* x${quantity}\n`;
+            itemsMessage += `> _${shopItem.description}_\n\n`;
+            hasShownItems = true;
+          } else if (resourceMap[itemId]) {
+            const resource = resourceMap[itemId];
+            resourcesMessage += `${resource.emoji} *${resource.name}:* ${quantity}\n`;
+            hasShownResources = true;
+          }
+        }
+    }
+
+    if (hasShownEquipment) finalMessage += equipmentMessage;
+    if (hasShownItems) finalMessage += itemsMessage;
+    if (hasShownResources) finalMessage += resourcesMessage;
 
     await sock.sendMessage(msg.key.remoteJid, { text: finalMessage.trim() }, { quoted: msg });
   }

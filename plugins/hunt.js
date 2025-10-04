@@ -27,10 +27,29 @@ const huntCommand = {
 
     user.lastHunt = now;
 
-    // --- Calculate total strength including equipment bonuses ---
+    // --- Combat Calculation ---
     let totalStrength = user.strength;
-    if (user.equipment && user.equipment.sword) {
-      totalStrength += user.equipment.sword.attack;
+    let durabilityMessage = "";
+    const durabilityLoss = 2; // Each item loses 2 durability per hunt
+
+    if (user.equipment) {
+        for (const itemType in user.equipment) {
+            const item = user.equipment[itemType];
+
+            // Only consider items with durability and relevant stats
+            if (item.durability > 0) {
+                if (item.attack) {
+                    totalStrength += item.attack;
+                }
+
+                // Decrease durability
+                item.durability -= durabilityLoss;
+                if (item.durability <= 0) {
+                    item.durability = 0; // Prevent negative durability
+                    durabilityMessage += `\n*¡Tu ${itemType} se ha roto!* Repáralo en la herrería.`;
+                }
+            }
+        }
     }
 
     const xpGained = Math.floor(Math.random() * 30) + 10; // 10-40 XP
@@ -38,22 +57,27 @@ const huntCommand = {
 
     let lootMessage = `Ganaste *${xpGained} XP* por la cacería.\n`;
 
-    // The hunt's success is now influenced by strength
-    const successChance = 0.5 + (totalStrength / 100); // Base 50% chance, +1% per 1 strength
+    // The hunt's success is influenced by strength
+    const successChance = 0.5 + (totalStrength / 120); // Base 50% chance, scaled
     const lootRoll = Math.random();
 
     if (lootRoll < successChance) {
-      const coinsGained = Math.floor(Math.random() * (20 + totalStrength)) + 10; // Better strength, better coins
+      const coinsGained = Math.floor(Math.random() * (20 + totalStrength)) + 10;
       user.coins += coinsGained;
       lootMessage += `¡Cacería exitosa! Atrapaste a tu presa y ganaste *${coinsGained} monedas*.`;
     } else {
       lootMessage += `La criatura era demasiado fuerte y escapó. ¡Necesitas más fuerza!`;
     }
 
+    // Add durability message if any item broke
+    if (durabilityMessage) {
+        lootMessage += `\n${durabilityMessage}`;
+    }
+
     const levelUpMessage = checkLevelUp(user);
     writeUsersDb(usersDb);
 
-    let fullMessage = `🏹 *De Cacería...*\n\n${lootMessage}`;
+    let fullMessage = `🏹 *De Cacería...*\n\n${lootMessage.trim()}`;
     if (levelUpMessage) {
       fullMessage += `\n\n${levelUpMessage}`;
     }

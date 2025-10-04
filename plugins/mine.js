@@ -30,38 +30,58 @@ const mineCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: `Debes esperar ${minutesLeft} minutos más para volver a minar.` }, { quoted: msg });
     }
 
-    // Rewards are now a mix of coins and resources
-    const coinEarnings = Math.floor(Math.random() * (40 - 10 + 1)) + 10; // 10-40 coins
-    const stoneGained = Math.floor(Math.random() * 5) + 2; // 2-6 stone
-    const coalGained = Math.floor(Math.random() * 4) + 1; // 1-4 coal
-    const ironGained = Math.random() > 0.6 ? Math.floor(Math.random() * 2) + 1 : 0; // 40% chance of 1-2 iron
+    // --- Rewards Calculation ---
+    const isMiner = user.profession === 'miner';
+    let professionBonusMessage = "";
+
+    let coinEarnings = Math.floor(Math.random() * (40 - 10 + 1)) + 10;
+    let stoneGained = Math.floor(Math.random() * 5) + 2;
+    let coalGained = Math.floor(Math.random() * 4) + 1;
+
+    // Base chances
+    let ironChance = 0.6; // 40%
+    let goldChance = 0.9; // 10%
+    let mithrilChance = 0.98; // 2%
+
+    if (isMiner) {
+        stoneGained = Math.floor(stoneGained * 1.5);
+        coalGained = Math.floor(coalGained * 1.5);
+        ironChance = 0.4; // 60%
+        goldChance = 0.8; // 20%
+        mithrilChance = 0.95; // 5%
+        professionBonusMessage = "\n\n*¡Tu habilidad de Minero te ha ayudado a encontrar más recursos!*";
+    }
+
+    const ironGained = Math.random() > ironChance ? Math.floor(Math.random() * 2) + 1 : 0;
+    const goldGained = Math.random() > goldChance ? 1 : 0;
+    const mithrilGained = Math.random() > mithrilChance ? 1 : 0;
 
     // Ensure inventory object exists
-    if (!user.inventory) {
-      user.inventory = {};
-    }
+    if (!user.inventory) user.inventory = {};
 
     // Update user data
     user.coins = (user.coins || 0) + coinEarnings;
     user.inventory.stone = (user.inventory.stone || 0) + stoneGained;
     user.inventory.coal = (user.inventory.coal || 0) + coalGained;
-    if (ironGained > 0) {
-      user.inventory.iron = (user.inventory.iron || 0) + ironGained;
-    }
+    if (ironGained > 0) user.inventory.iron = (user.inventory.iron || 0) + ironGained;
+    if (goldGained > 0) user.inventory.gold = (user.inventory.gold || 0) + goldGained;
+    if (mithrilGained > 0) user.inventory.mithril = (user.inventory.mithril || 0) + mithrilGained;
     user.lastMine = now;
 
     writeUsersDb(usersDb);
 
-    // Construct the result message
+    // --- Construct the result message ---
     let resultMessage = `*⛏️ Sesión de minería completada ⛏️*\n\n` +
                         `Has obtenido:\n` +
                         `💰 *${coinEarnings}* Monedas\n` +
                         `🪨 *${stoneGained}* de Piedra\n` +
                         `⚫ *${coalGained}* de Carbón`;
 
-    if (ironGained > 0) {
-      resultMessage += `\n🔩 *${ironGained}* de Hierro`;
-    }
+    if (ironGained > 0) resultMessage += `\n🔩 *${ironGained}* de Hierro`;
+    if (goldGained > 0) resultMessage += `\n🌟 *${goldGained}* de Oro`;
+    if (mithrilGained > 0) resultMessage += `\n✨ *${mithrilGained}* de Mithril`;
+
+    resultMessage += professionBonusMessage;
 
     await sock.sendMessage(msg.key.remoteJid, { text: resultMessage }, { quoted: msg });
   }
