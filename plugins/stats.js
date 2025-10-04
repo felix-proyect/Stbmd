@@ -18,19 +18,27 @@ const statsCommand = {
     const xpNeeded = getXpForNextLevel(user.level);
     const xpProgress = `${user.xp}/${xpNeeded} XP`;
 
+    // --- Calculate total stats including equipment bonuses ---
+    let totalStrength = user.strength;
+    let equipmentBonus = 0;
+    if (user.equipment && user.equipment.sword) {
+      equipmentBonus = user.equipment.sword.attack;
+      totalStrength += equipmentBonus;
+    }
+
     const statsMessage = `*📊 Estadísticas de ${user.name} 📊*\n\n` +
                          `*Nivel:* ${user.level}\n` +
                          `*Experiencia:* ${xpProgress}\n` +
                          `*HP:* ${user.hp}/${user.maxHp} ❤️\n` +
                          `*Monedas:* ${user.coins} 💰\n\n` +
                          `*⚔️ Atributos de Combate ⚔️*\n` +
-                         `*Fuerza:* ${user.strength}\n` +
+                         `*Fuerza:* ${totalStrength} (${user.strength} + ${equipmentBonus} 🗡️)\n` +
                          `*Defensa:* ${user.defense}\n` +
                          `*Velocidad:* ${user.speed}\n\n` +
-                         `*🎒 Inventario 🎒*\n` +
-                         `*Pociones:* ${user.inventory.potions || 0}\n` +
+                         `*🎒 Inventario de Recursos 🎒*\n` +
                          `*Madera:* ${user.inventory.wood || 0}\n` +
                          `*Piedra:* ${user.inventory.stone || 0}\n` +
+                         `*Carbón:* ${user.inventory.coal || 0}\n` +
                          `*Hierro:* ${user.inventory.iron || 0}\n` +
                          `*Diamantes:* ${user.inventory.diamonds || 0}`;
 

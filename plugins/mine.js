@@ -30,22 +30,35 @@ const mineCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: `Debes esperar ${minutesLeft} minutos más para volver a minar.` }, { quoted: msg });
     }
 
-    const earnings = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
+    // Rewards are now a mix of coins and resources
+    const coinEarnings = Math.floor(Math.random() * (40 - 10 + 1)) + 10; // 10-40 coins
+    const stoneGained = Math.floor(Math.random() * 5) + 2; // 2-6 stone
+    const coalGained = Math.floor(Math.random() * 4) + 1; // 1-4 coal
+    const ironGained = Math.random() > 0.6 ? Math.floor(Math.random() * 2) + 1 : 0; // 40% chance of 1-2 iron
 
-    user.coins = (user.coins || 0) + earnings;
+    // Update user data
+    user.coins = (user.coins || 0) + coinEarnings;
+    user.inventory.stone = (user.inventory.stone || 0) + stoneGained;
+    user.inventory.coal = (user.inventory.coal || 0) + coalGained;
+    if (ironGained > 0) {
+      user.inventory.iron = (user.inventory.iron || 0) + ironGained;
+    }
     user.lastMine = now;
 
     writeUsersDb(usersDb);
 
-    const mineMessages = [
-        `¡Encontraste una veta de cuarzo! La vendiste por ${earnings} coins.`,
-        `¡Una geoda! Dentro había ${earnings} coins.`,
-        `Picaste todo el día para conseguir ${earnings} coins.`,
-        `¡Un rubí! Lo vendiste a un coleccionista por ${earnings} coins.`
-    ];
-    const message = mineMessages[Math.floor(Math.random() * mineMessages.length)];
+    // Construct the result message
+    let resultMessage = `*⛏️ Sesión de minería completada ⛏️*\n\n` +
+                        `Has obtenido:\n` +
+                        `💰 *${coinEarnings}* Monedas\n` +
+                        `🪨 *${stoneGained}* de Piedra\n` +
+                        `⚫ *${coalGained}* de Carbón`;
 
-    await sock.sendMessage(msg.key.remoteJid, { text: `⛏️ ${message}\n*Nuevo saldo:* ${user.coins} coins` }, { quoted: msg });
+    if (ironGained > 0) {
+      resultMessage += `\n🔩 *${ironGained}* de Hierro`;
+    }
+
+    await sock.sendMessage(msg.key.remoteJid, { text: resultMessage }, { quoted: msg });
   }
 };
 
