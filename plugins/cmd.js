@@ -1,24 +1,39 @@
 import { exec } from 'child_process';
 import util from 'util';
+import config from '../config.js';
 
 const execPromise = util.promisify(exec);
 
-const cmdCommand = {
-  name: "cmd",
-  category: "propietario",
-  description: "Ejecuta un comando en la terminal del servidor.",
-  aliases: ["$"],
-  owner: true, // Doble seguridad, aunque la categoría ya lo restringe.
+const execHandler = {
+  // Propiedad clave para que se ejecute en cada mensaje
+  isAutoHandler: true,
+  name: 'exec-auto-handler', // Nombre interno para logs
 
-  async execute({ sock, msg, text }) {
-    if (!text) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "Por favor, proporciona un comando para ejecutar." }, { quoted: msg });
+  async execute({ sock, msg, body }) {
+    // 1. Verificar si el usuario es el propietario del bot
+    const senderNumber = msg.sender.split('@')[0];
+    const isOwner = config.ownerNumbers.includes(senderNumber);
+
+    if (!isOwner) {
+      return; // No es el propietario, no hacer nada.
+    }
+
+    // 2. Verificar si el mensaje comienza con el símbolo de activación '$'
+    if (!body || !body.startsWith('$')) {
+      return; // No es un comando para este manejador.
+    }
+
+    // 3. Extraer el comando a ejecutar (el texto después de '$')
+    const commandToExecute = body.slice(1).trim();
+    if (!commandToExecute) {
+      // Si el usuario solo envía '$', no hacer nada.
+      return;
     }
 
     await sock.sendMessage(msg.key.remoteJid, { react: { text: "⚙️", key: msg.key } });
 
     try {
-      const { stdout, stderr } = await execPromise(text);
+      const { stdout, stderr } = await execPromise(commandToExecute);
       let output = "";
 
       if (stdout) {
@@ -36,7 +51,7 @@ const cmdCommand = {
       await sock.sendMessage(msg.key.remoteJid, { react: { text: "✅", key: msg.key } });
 
     } catch (error) {
-      console.error("Error en el comando 'cmd':", error);
+      console.error("Error en el exec-handler:", error);
       await sock.sendMessage(msg.key.remoteJid, { react: { text: "❌", key: msg.key } });
 
       const errorMessage = `*Error de Ejecución:*\n\`\`\`${error.message}\`\`\``;
@@ -45,4 +60,4 @@ const cmdCommand = {
   }
 };
 
-export default cmdCommand;
+export default execHandler;
