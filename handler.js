@@ -61,11 +61,24 @@ export async function handler(m, isSubBot = false) {
     let command = commands.get(commandName) || commands.get(aliases.get(commandName));
 
     if (command) {
-      // --- Verificaciones de Permisos ---
       const isGroup = from.endsWith('@g.us');
       const senderNumber = senderId.split('@')[0];
       const isOwner = config.ownerNumbers.includes(senderNumber);
 
+      // --- Verificación Global de Modo Admin ---
+      if (isGroup && settings[from]?.adminMode && !isOwner) {
+        const groupMetadata = await sock.groupMetadata(from);
+        const senderParticipant = groupMetadata.participants.find(p => areJidsSameUser(p.id, senderId));
+        const senderIsAdmin = senderParticipant?.admin === 'admin' || senderParticipant?.admin === 'superadmin';
+
+        if (!senderIsAdmin) {
+          // Si el modo admin está activado y el usuario no es admin, no hacer nada.
+          return;
+        }
+      }
+      // --- Fin de la Verificación ---
+
+      // --- Verificaciones de Permisos por Comando ---
       if (command.category === 'propietario' && !isOwner) {
         return sock.sendMessage(from, { text: "Este comando es solo para el propietario del bot." });
       }
