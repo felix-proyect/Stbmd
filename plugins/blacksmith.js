@@ -284,12 +284,14 @@ const blacksmithCommand = {
     let infoMessage = `*🗡️ Tu Equipamiento 🗡️*\n\n`;
     for (const itemType in user.equipment) {
         const item = user.equipment[itemType];
-        const config = itemConfig[itemType] || { name: "Objeto Desconocido" };
-
-        infoMessage += `*${config.name} (Nivel ${item.level})*\n`;
-        if (item.attack) infoMessage += `> Ataque: +${item.attack}\n`;
-        if (item.defense) infoMessage += `> Defensa: +${item.defense}\n`;
-        infoMessage += `> Durabilidad: ${item.durability}/${item.maxDurability}\n\n`;
+        // SOLUCIÓN: Comprobar si el item no es null antes de intentar mostrarlo
+        if (item) {
+            const config = itemConfig[itemType] || { name: "Objeto Desconocido" };
+            infoMessage += `*${config.name} (Nivel ${item.level})*\n`;
+            if (item.attack) infoMessage += `> Ataque: +${item.attack}\n`;
+            if (item.defense) infoMessage += `> Defensa: +${item.defense}\n`;
+            infoMessage += `> Durabilidad: ${item.durability}/${item.maxDurability}\n\n`;
+        }
     }
 
     await sock.sendMessage(msg.key.remoteJid, { text: infoMessage.trim() }, { quoted: msg });

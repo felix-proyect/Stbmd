@@ -59,13 +59,15 @@ const inventoryCommand = {
     if (hasEquipment) {
         for (const itemType in user.equipment) {
             const item = user.equipment[itemType];
-            const itemName = equipmentNameMap[itemType] || "Objeto Desconocido";
-
-            equipmentMessage += `*${itemName} (Nivel ${item.level})*\n`;
-            if (item.attack) equipmentMessage += `> Ataque: +${item.attack}\n`;
-            if (item.defense) equipmentMessage += `> Defensa: +${item.defense}\n`;
-            equipmentMessage += `> Durabilidad: ${item.durability}/${item.maxDurability}\n\n`;
-            hasShownEquipment = true;
+            // SOLUCIÓN: Comprobar si el item no es null antes de intentar mostrarlo
+            if (item) {
+                const itemName = equipmentNameMap[itemType] || "Objeto Desconocido";
+                equipmentMessage += `*${itemName} (Nivel ${item.level})*\n`;
+                if (item.attack) equipmentMessage += `> Ataque: +${item.attack}\n`;
+                if (item.defense) equipmentMessage += `> Defensa: +${item.defense}\n`;
+                equipmentMessage += `> Durabilidad: ${item.durability}/${item.maxDurability}\n\n`;
+                hasShownEquipment = true;
+            }
         }
     }
 

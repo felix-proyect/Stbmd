@@ -45,7 +45,8 @@ const huntCommand = {
     if (user.equipment) {
         for (const itemType in user.equipment) {
             const item = user.equipment[itemType];
-            if (item.durability > 0) {
+            // SOLUCIÓN: Comprobar si el item no es null antes de usarlo
+            if (item && item.durability > 0) {
                 if (item.attack) totalStrength += item.attack;
                 if (item.defense) totalDefense += item.defense;
 
