@@ -177,11 +177,9 @@ const blacksmithCommand = {
         level: 1,
         durability: config.baseDurability,
         maxDurability: config.baseDurability,
+        attack: config.baseAttack || 0,
+        defense: config.baseDefense || 0
     };
-    // Add specific stats
-    if (config.baseAttack) user.equipment[itemType].attack = config.baseAttack;
-    if (config.baseDefense) user.equipment[itemType].defense = config.baseDefense;
-
 
     saveUser(msg.sender, user);
     await sock.sendMessage(msg.key.remoteJid, { text: `⚔️ ¡Has forjado una ${config.name} (Nivel 1)!` }, { quoted: msg });
@@ -284,8 +282,7 @@ const blacksmithCommand = {
     let infoMessage = `*🗡️ Tu Equipamiento 🗡️*\n\n`;
     for (const itemType in user.equipment) {
         const item = user.equipment[itemType];
-        // SOLUCIÓN: Comprobar si el item no es null antes de intentar mostrarlo
-        if (item) {
+        if (item) { // CRITICAL FIX: Ensure item is not null
             const config = itemConfig[itemType] || { name: "Objeto Desconocido" };
             infoMessage += `*${config.name} (Nivel ${item.level})*\n`;
             if (item.attack) infoMessage += `> Ataque: +${item.attack}\n`;
