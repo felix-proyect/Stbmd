@@ -1,4 +1,5 @@
 import { readUsersDb } from '../lib/database.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 const professionMap = {
   blacksmith: { name: "Herrero", emoji: "🛠️" },
@@ -21,6 +22,9 @@ const profileCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado en el RPG. Usa `reg`." }, { quoted: msg });
     }
 
+    // Inicializar datos del usuario para asegurar compatibilidad
+    initializeRpgUser(user);
+
     const getBar = (current, max) => {
         const percentage = (current / max) * 100;
         const filledCount = Math.round((percentage / 100) * 10);
@@ -37,7 +41,7 @@ const profileCommand = {
     profileMessage += `[${getBar(user.xp, xpForNextLevel)}]\n\n`;
 
     // --- Profession ---
-    if (user.profession) {
+    if (user.profession && professionMap[user.profession]) {
         const prof = professionMap[user.profession];
         profileMessage += `*Profesión:* ${prof.emoji} ${prof.name}\n\n`;
     } else {
@@ -45,7 +49,7 @@ const profileCommand = {
     }
 
     // --- Core Stats ---
-    profileMessage += "❤️ *Salud:* " + `${user.hp || user.maxHp}/${user.maxHp}\n`;
+    profileMessage += "❤️ *Salud:* " + `${user.hp}/${user.maxHp}\n`;
     profileMessage += "💰 *Monedas:* " + `${user.coins || 0}\n\n`;
 
     profileMessage += "⚔️ *Estadísticas de Combate*\n";

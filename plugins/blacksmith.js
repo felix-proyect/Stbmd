@@ -1,4 +1,5 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 // --- Item Configuration ---
 const itemConfig = {
@@ -122,10 +123,8 @@ const blacksmithCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
-    // Initialize equipment if it doesn't exist
-    if (!user.equipment) {
-      user.equipment = {};
-    }
+    // Inicializar datos del usuario para asegurar compatibilidad
+    initializeRpgUser(user);
 
     const action = args[0]?.toLowerCase();
     const itemType = args[1]?.toLowerCase();
@@ -249,7 +248,8 @@ const blacksmithCommand = {
     const item = user.equipment[itemType];
     const missingDurability = item.maxDurability - item.durability;
 
-    if (missingDurability === 0) {
+    if (missingDurability <= 0) {
+        item.durability = item.maxDurability; // Corregir en caso de que la durabilidad sea mayor al máximo
         return sock.sendMessage(msg.key.remoteJid, { text: `Tu ${config.name} ya está completamente reparada.` }, { quoted: msg });
     }
 
@@ -284,7 +284,8 @@ const blacksmithCommand = {
     let infoMessage = `*🗡️ Tu Equipamiento 🗡️*\n\n`;
     for (const itemType in user.equipment) {
         const item = user.equipment[itemType];
-        const config = itemConfig[itemType];
+        const config = itemConfig[itemType] || { name: "Objeto Desconocido" };
+
         infoMessage += `*${config.name} (Nivel ${item.level})*\n`;
         if (item.attack) infoMessage += `> Ataque: +${item.attack}\n`;
         if (item.defense) infoMessage += `> Defensa: +${item.defense}\n`;

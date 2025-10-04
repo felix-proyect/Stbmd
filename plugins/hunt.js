@@ -1,4 +1,5 @@
 import { readUsersDb, writeUsersDb, checkLevelUp } from '../lib/database.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 const huntCommand = {
   name: "hunt",
@@ -16,8 +17,11 @@ const huntCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado en el RPG. Usa `reg`." }, { quoted: msg });
     }
 
+    // Inicializar datos del usuario para asegurar compatibilidad
+    initializeRpgUser(user);
+
     if (user.hp <= 0) {
-        user.hp = 0; // Just in case
+        user.hp = 0; // Asegurarse de que no sea negativo
         return sock.sendMessage(msg.key.remoteJid, { text: "Estás demasiado débil para cazar. Usa el comando `.heal` para recuperarte." }, { quoted: msg });
     }
 
@@ -73,7 +77,7 @@ const huntCommand = {
         user.hp = Math.max(0, user.hp - damageTaken);
 
         lootMessage += `¡La criatura te ha herido! Perdiste *${damageTaken} HP*.\n`+
-                       `> Te quedan *${user.hp}/${user.maxHp}* de vida.`;
+                       `> Te quedan ${user.hp}/${user.maxHp} de vida.`;
 
         if (user.hp <= 0) {
             const xpPenalty = Math.floor(user.xp * 0.1);
