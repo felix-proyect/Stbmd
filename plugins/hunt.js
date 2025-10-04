@@ -40,13 +40,12 @@ const huntCommand = {
     let totalStrength = user.strength;
     let totalDefense = user.defense;
     let durabilityMessage = "";
-    const durabilityLoss = 3; // Each item loses 3 durability per hunt
+    const durabilityLoss = 3;
 
     if (user.equipment) {
         for (const itemType in user.equipment) {
             const item = user.equipment[itemType];
-            // SOLUCIÓN: Comprobar si el item no es null antes de usarlo
-            if (item && item.durability > 0) {
+            if (item && item.durability > 0) { // CRITICAL FIX: Check if item is not null
                 if (item.attack) totalStrength += item.attack;
                 if (item.defense) totalDefense += item.defense;
 
@@ -59,7 +58,7 @@ const huntCommand = {
         }
     }
 
-    const xpGained = Math.floor(Math.random() * 25) + 15; // 15-40 XP
+    const xpGained = Math.floor(Math.random() * 25) + 15;
     user.xp += xpGained;
 
     let lootMessage = `Ganaste *${xpGained} XP* por la cacería.\n`;

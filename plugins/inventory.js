@@ -40,7 +40,7 @@ const inventoryCommand = {
     initializeRpgUser(user);
 
     const hasInventory = user.inventory && Object.keys(user.inventory).some(key => user.inventory[key] > 0);
-    const hasEquipment = user.equipment && Object.keys(user.equipment).length > 0;
+    const hasEquipment = user.equipment && Object.values(user.equipment).some(item => item !== null);
 
     if (!hasInventory && !hasEquipment) {
         return sock.sendMessage(msg.key.remoteJid, { text: "Tu inventario y equipamiento están vacíos." }, { quoted: msg });
@@ -59,8 +59,7 @@ const inventoryCommand = {
     if (hasEquipment) {
         for (const itemType in user.equipment) {
             const item = user.equipment[itemType];
-            // SOLUCIÓN: Comprobar si el item no es null antes de intentar mostrarlo
-            if (item) {
+            if (item) { // CRITICAL FIX: Ensure item is not null
                 const itemName = equipmentNameMap[itemType] || "Objeto Desconocido";
                 equipmentMessage += `*${itemName} (Nivel ${item.level})*\n`;
                 if (item.attack) equipmentMessage += `> Ataque: +${item.attack}\n`;

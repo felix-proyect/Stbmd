@@ -34,6 +34,8 @@ const mineCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: `Debes esperar ${minutesLeft} minutos más para volver a minar.` }, { quoted: msg });
     }
 
+    user.lastMine = now;
+
     // --- Rewards Calculation ---
     const isMiner = user.profession === 'miner';
     let professionBonusMessage = "";
@@ -67,7 +69,6 @@ const mineCommand = {
     if (ironGained > 0) user.inventory.iron = (user.inventory.iron || 0) + ironGained;
     if (goldGained > 0) user.inventory.gold = (user.inventory.gold || 0) + goldGained;
     if (mithrilGained > 0) user.inventory.mithril = (user.inventory.mithril || 0) + mithrilGained;
-    user.lastMine = now;
 
     writeUsersDb(usersDb);
 
