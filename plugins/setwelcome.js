@@ -44,7 +44,7 @@ const setWelcomeCommand = {
     }
 
     if (!welcomeText) {
-        return sock.sendMessage(from, { text: "Por favor, proporciona un mensaje de bienvenida. Ejemplo: `setwelcome ¡Bienvenido @user al grupo!`" }, { quoted: msg });
+        return sock.sendMessage(from, { text: "Por favor, proporciona un mensaje de bienvenida. Revisa el comando `menu` para ver todas las variables disponibles.\n\n*Ejemplo:*\n`.setwelcome ¡Hola @user! Bienvenido a @subject. Somos @count miembros.`" }, { quoted: msg });
     }
 
     settings[from].welcome = true;
