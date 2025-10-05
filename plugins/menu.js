@@ -3,6 +3,7 @@ import { readSettingsDb } from '../lib/database.js';
 // 🔱 Mapa de emojis para las categorías temático de Gura
 const categoryEmojis = {
   'rpg': '⚔️',
+  'gacha': '💖',
   'general': '🔱',
   'descargas': '🌊',
   'diversion': '🐟',

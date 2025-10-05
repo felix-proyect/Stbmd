@@ -19,7 +19,7 @@ const writeTradesDb = (data) => {
 
 const rejectTradeCommand = {
   name: "rejecttrade",
-  category: "rpg",
+  category: "gacha",
   description: "Rechaza una propuesta de intercambio de waifus. Uso: .rejecttrade <ID_del_trade>",
   aliases: ["rechazarintercambio"],
   group: true,

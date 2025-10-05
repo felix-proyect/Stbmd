@@ -15,7 +15,7 @@ const readTradesDb = () => {
 
 const tradesCommand = {
   name: "trades",
-  category: "rpg",
+  category: "gacha",
   description: "Muestra tus propuestas de intercambio pendientes (enviadas y recibidas).",
   aliases: ["intercambios"],
   group: true,

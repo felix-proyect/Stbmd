@@ -21,7 +21,7 @@ const writeTradesDb = (data) => {
 
 const tradeWaifuCommand = {
   name: "tradewaifu",
-  category: "rpg",
+  category: "gacha",
   description: "Propón un intercambio de waifus a otro usuario.\nUso: .tradewaifu <ID de tu waifu> @usuario <ID de su waifu>",
   aliases: ["intercambiarwaifu"],
   group: true,

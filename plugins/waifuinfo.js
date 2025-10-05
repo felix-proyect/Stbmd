@@ -15,7 +15,7 @@ const getCharacters = () => {
 
 const waifuInfoCommand = {
   name: "waifuinfo",
-  category: "rpg",
+  category: "gacha",
   description: "Muestra información detallada de una waifu. Uso: .waifuinfo <nombre>",
   aliases: ["winfo"],
 
