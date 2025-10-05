@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom';
-import Baileys, {
+import makeWASocket, {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
@@ -220,7 +220,7 @@ async function connectToWhatsApp() {
   }
 
   const usingCode = option === '2';
-  const sock = Baileys.default({
+  const sock = makeWASocket({
     version,
     auth: {
       creds: state.creds,
