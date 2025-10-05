@@ -16,7 +16,7 @@ const getCharacters = () => {
 
 const gachaCommand = {
   name: "gacha",
-  category: "rpg",
+  category: "gacha",
   description: "Obtén una waifu aleatoria para tu harén.",
   aliases: ["roll", "waifu"],
 

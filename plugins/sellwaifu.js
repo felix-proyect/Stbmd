@@ -3,7 +3,7 @@ import { initializeRpgUser } from '../lib/utils.js';
 
 const sellWaifuCommand = {
   name: "sellwaifu",
-  category: "rpg",
+  category: "gacha",
   description: "Vende una waifu de tu harén por su valor en WFCoins. Uso: .sellwaifu <ID>",
   aliases: ["venderwaifu"],
 

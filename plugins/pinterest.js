@@ -4,7 +4,7 @@ import baileys from '@whiskeysockets/baileys';
 // Helper function to fetch Pinterest image URLs
 async function searchPins(query) {
   try {
-    const { data } = await axios.get(`https://api.dorratz.com/v2/pinterest?q=${encodeURIComponent(query)}`);
+    const { data } = await axios.get(`https://anime-xi-wheat.vercel.app/api/pinterest?q=${encodeURIComponent(query)}`);
     // The API returns an object with an 'images' array
     return Array.isArray(data.images) ? data.images : [];
   } catch (error) {

@@ -20,7 +20,7 @@ const writeTradesDb = (data) => {
 
 const acceptTradeCommand = {
   name: "accepttrade",
-  category: "rpg",
+  category: "gacha",
   description: "Acepta una propuesta de intercambio de waifus. Uso: .accepttrade <ID_del_trade>",
   aliases: ["aceptarintercambio"],
   group: true,

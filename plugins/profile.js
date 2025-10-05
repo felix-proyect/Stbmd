@@ -55,7 +55,15 @@ const profileCommand = {
     profileMessage += "⚔️ *Estadísticas de Combate*\n";
     profileMessage += `*Fuerza:* ${user.strength}\n`;
     profileMessage += `*Defensa:* ${user.defense}\n`;
-    profileMessage += `*Velocidad:* ${user.speed}\n`;
+    profileMessage += `*Velocidad:* ${user.speed}\n\n`;
+
+    // --- Favorite Waifu ---
+    if (user.favoriteWaifuId) {
+        const favoriteWaifu = user.harem.find(w => w.id === user.favoriteWaifuId);
+        if (favoriteWaifu) {
+            profileMessage += `*❤️ Waifu Favorita:* ${favoriteWaifu.name}\n`;
+        }
+    }
 
     await sock.sendMessage(msg.key.remoteJid, { text: profileMessage.trim() }, { quoted: msg });
   }

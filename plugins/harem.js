@@ -3,7 +3,7 @@ import { initializeRpgUser } from '../lib/utils.js';
 
 const haremCommand = {
   name: "harem",
-  category: "rpg",
+  category: "gacha",
   description: "Muestra tu colección de waifus obtenidas.",
   aliases: ["mywaifus", "collection"],
 
