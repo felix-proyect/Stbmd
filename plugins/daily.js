@@ -1,15 +1,13 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
-
-const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 horas
-const DAILY_REWARD = 1000;
+import { initializeRpgUser } from '../lib/utils.js';
 
 const dailyCommand = {
   name: "daily",
-  category: "economia",
+  category: "rpg",
   description: "Reclama tu recompensa diaria de monedas.",
   aliases: ["diario"],
 
-  async execute({ sock, msg, config }) {
+  async execute({ sock, msg }) {
     const senderId = msg.sender;
     const usersDb = readUsersDb();
     const user = usersDb[senderId];
@@ -18,29 +16,27 @@ const dailyCommand = {
       return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
+    initializeRpgUser(user);
+
+    const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 horas
     const lastDaily = user.lastDaily || 0;
     const now = Date.now();
 
     if (now - lastDaily < COOLDOWN_MS) {
       const timeLeft = COOLDOWN_MS - (now - lastDaily);
       const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutesLeft = Math.ceil((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      return sock.sendMessage(msg.key.remoteJid, { text: `Ya reclamaste tu recompensa diaria. Vuelve en ${hoursLeft} horas y ${minutesLeft} minutos.` }, { quoted: msg });
+      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      return sock.sendMessage(msg.key.remoteJid, { text: `Ya reclamaste tu recompensa diaria. Vuelve en ${hoursLeft}h y ${minutesLeft}m.` }, { quoted: msg });
     }
 
-    const tax = Math.floor(DAILY_REWARD * config.taxRate);
-    const netReward = DAILY_REWARD - tax;
-
-    user.coins = (user.coins || 0) + netReward;
+    const reward = 500; // Recompensa de 500 monedas
+    user.coins = (user.coins || 0) + reward;
     user.lastDaily = now;
 
     writeUsersDb(usersDb);
 
-    const dailyMessage = `🎉 ¡Has reclamado tu recompensa diaria de *${DAILY_REWARD} coins*!\n` +
-                         `💸 Se dedujo un impuesto del ${config.taxRate * 100}% (*${tax} coins*).\n` +
-                         `💰 Ganancia neta: *${netReward} coins*.\n` +
-                         `🏦 Tu nuevo saldo es *${user.coins} coins*.`;
-    await sock.sendMessage(msg.key.remoteJid, { text: dailyMessage }, { quoted: msg });
+    const successMessage = `*🎁 Recompensa Diaria 🎁*\n\n¡Has reclamado tu recompensa de *${reward}* monedas! Vuelve mañana para obtener más.`;
+    await sock.sendMessage(msg.key.remoteJid, { text: successMessage }, { quoted: msg });
   }
 };
 
