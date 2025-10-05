@@ -1,5 +1,6 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { Sticker, StickerTypes } from 'wa-sticker-formatter';
+import StickerFormatter from 'wa-sticker-formatter';
+const { Sticker, StickerTypes } = StickerFormatter;
 import axios from 'axios';
 
 // Función para validar si un texto es una URL de imagen/video válida
