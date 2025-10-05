@@ -371,29 +371,52 @@ async function connectToWhatsApp() {
   sock.ev.on('group-participants.update', async (event) => {
     const { id, participants, action } = event;
     
-    const { readSettingsDb } = await import('./lib/database.js');
-    const settings = readSettingsDb();
-    const groupSettings = settings[id];
+    try {
+      const { readSettingsDb } = await import('./lib/database.js');
+      const settings = readSettingsDb();
+      const groupSettings = settings[id];
 
-    if (!groupSettings) return;
+      if (!groupSettings) return;
 
-    for (const p of participants) {
-      try {
-        const userName = `@${p.split('@')[0]}`;
-        let message = '';
+      const groupMetadata = await sock.groupMetadata(id);
+
+      for (const p of participants) {
+        let messages = [];
+        let baseMessageText = '';
 
         if (action === 'add' && groupSettings.welcome && groupSettings.welcomeMessage) {
-          message = groupSettings.welcomeMessage.replace(/@user/g, userName);
+            baseMessageText = groupSettings.welcomeMessage;
         } else if (action === 'remove' && groupSettings.bye && groupSettings.byeMessage) {
-          message = groupSettings.byeMessage.replace(/@user/g, userName);
+            baseMessageText = groupSettings.byeMessage;
+        } else {
+            continue; // No hay mensaje que procesar para este evento
         }
 
-        if (message) {
-          await sock.sendMessage(id, { text: message, mentions: [p] });
+        messages = baseMessageText.split('|').map(s => s.trim()).slice(0, 3); // Dividir por | y limitar a 3 mensajes
+
+        for (const messageText of messages) {
+            if (!messageText) continue;
+
+            let mentions = [p];
+            let finalMessage = messageText
+              .replace(/@user/g, `@${p.split('@')[0]}`)
+              .replace(/@subject/g, groupMetadata.subject)
+              .replace(/@desc/g, groupMetadata.desc?.toString() || 'Sin descripción')
+              .replace(/@count/g, groupMetadata.participants.length);
+
+            if (finalMessage.includes('@tag')) {
+                const allParticipants = groupMetadata.participants.map(part => part.id);
+                mentions = [...new Set([...mentions, ...allParticipants])]; // Unir y eliminar duplicados
+                finalMessage = finalMessage.replace(/@tag/g, ''); // Eliminar el tag del texto final
+            }
+
+            // Enviar el mensaje con un pequeño retraso
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await sock.sendMessage(id, { text: finalMessage, mentions: mentions });
         }
-      } catch (e) {
-        console.error(`Error en group-participants.update para el participante ${p}:`, e);
       }
+    } catch (e) {
+      console.error(`Error en group-participants.update para el grupo ${id}:`, e);
     }
   });
 

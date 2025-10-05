@@ -3,7 +3,14 @@ import { readSettingsDb, writeSettingsDb } from '../lib/database.js';
 const setWelcomeCommand = {
   name: "setwelcome",
   category: "grupos",
-  description: "Establece un mensaje de bienvenida para el grupo. Usa @user para mencionar al nuevo miembro. Escribe 'off' para desactivarlo.",
+  description: "Establece un mensaje de bienvenida dinámico.\n\n" +
+               "Variables disponibles:\n" +
+               "  `@user`: Menciona al usuario.\n" +
+               "  `@subject`: Nombre del grupo.\n" +
+               "  `@desc`: Descripción del grupo.\n" +
+               "  `@count`: Número de miembros.\n" +
+               "  `@tag`: Menciona a todos.\n\n" +
+               "Para múltiples mensajes, sepáralos con `|` (máx. 3).",
 
   async execute({ sock, msg, args }) {
     const from = msg.key.remoteJid;
