@@ -27,18 +27,31 @@ const stickerCommand = {
 
     let mediaMessage;
     let buffer;
+    let source = null; // Para un mejor manejo de errores
 
     // Prioridad 1: Mensaje citado
     if (quoted) {
         mediaMessage = quoted;
+        source = 'quoted message';
     }
     // Prioridad 2: Mensaje con imagen/video
     else if (msg.message?.imageMessage || msg.message?.videoMessage) {
         mediaMessage = msg.message;
+        source = 'direct message';
+    }
+    // Prioridad 3: URL en los argumentos
+    else if (args[0] && isUrl(args[0])) {
+        source = 'url';
     }
 
+    if (!source) {
+        return sock.sendMessage(from, { text: "Responde a una imagen/video, o envía una URL, para crear un sticker." }, { quoted: msg });
+    }
+
+    await sock.sendMessage(from, { react: { text: "🎨", key: msg.key } });
+
     try {
-        if (mediaMessage) {
+        if (source === 'quoted message' || source === 'direct message') {
             if (mediaMessage.videoMessage && mediaMessage.videoMessage.seconds > 10) {
                 return sock.sendMessage(from, { text: "El video es demasiado largo. El límite es de 10 segundos." }, { quoted: msg });
             }
@@ -47,18 +60,14 @@ const stickerCommand = {
             for await(const chunk of stream) {
                 buffer = Buffer.concat([buffer, chunk]);
             }
-        }
-        // Prioridad 3: URL en los argumentos
-        else if (args[0] && isUrl(args[0])) {
+        } else if (source === 'url') {
             const url = args[0];
             const response = await axios.get(url, { responseType: 'arraybuffer' });
             buffer = response.data;
-        } else {
-            return sock.sendMessage(from, { text: "Responde a una imagen/video, o envía una URL, para crear un sticker." }, { quoted: msg });
         }
 
         if (!buffer) {
-            throw new Error("No se pudo obtener el medio para crear el sticker.");
+            throw new Error("No se pudo obtener el buffer del medio.");
         }
 
         const sticker = new Sticker(buffer, {
@@ -68,12 +77,16 @@ const stickerCommand = {
             quality: 50
         });
 
-        const stickerBuffer = await sticker.toBuffer();
-        await sock.sendMessage(from, { sticker: stickerBuffer });
+        // La nueva versión puede requerir .toMessage() para compatibilidad con Baileys
+        const stickerMessage = await sticker.toMessage();
+        await sock.sendMessage(from, stickerMessage);
+
+        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
     } catch (e) {
         console.error("Error en el comando sticker:", e);
-        await sock.sendMessage(from, { text: "Ocurrió un error al crear el sticker. Asegúrate de que el medio sea válido." }, { quoted: msg });
+        await sock.sendMessage(from, { react: { text: "❌", key: msg.key } });
+        await sock.sendMessage(from, { text: `Ocurrió un error al crear el sticker. Detalles: ${e.message}` }, { quoted: msg });
     }
   }
 };
