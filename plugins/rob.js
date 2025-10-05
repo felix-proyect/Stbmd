@@ -1,83 +1,72 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { initializeRpgUser, getUserFromMessage } from '../lib/utils.js';
 
 const robCommand = {
   name: "rob",
-  category: "economia",
-  description: "Intenta robar monedas a otro usuario. El éxito depende de tu nivel y el de la víctima.",
+  category: "rpg",
+  description: "Intenta robarle monedas a otro usuario. ¡Cuidado, puedes fallar y pagar una multa!",
   aliases: ["robar"],
+  group: true,
 
-  async execute({ sock, msg }) {
+  async execute({ sock, msg, args }) {
     const senderId = msg.sender;
     const usersDb = readUsersDb();
-    const robber = usersDb[senderId];
-    const COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 horas
+    const user = usersDb[senderId];
 
-    if (!robber) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa `reg`." }, { quoted: msg });
+    if (!user) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
-    const lastRob = robber.lastRob || 0;
+    initializeRpgUser(user);
+
+    const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutos
+    const lastRob = user.lastRob || 0;
     const now = Date.now();
+
     if (now - lastRob < COOLDOWN_MS) {
-        const timeLeft = COOLDOWN_MS - (now - lastRob);
-        const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-        const minutesLeft = Math.ceil((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-        return sock.sendMessage(msg.key.remoteJid, { text: `Debes esperar ${hoursLeft}h y ${minutesLeft}m para volver a robar.` }, { quoted: msg });
+      const timeLeft = COOLDOWN_MS - (now - lastRob);
+      const minutesLeft = Math.ceil(timeLeft / (1000 * 60));
+      return sock.sendMessage(msg.key.remoteJid, { text: `Has llamado mucho la atención. Espera ${minutesLeft} minutos antes de volver a robar.` }, { quoted: msg });
     }
 
-    const mentionedJid = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-    if (!mentionedJid) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "Debes mencionar a un usuario para robarle. Ejemplo: `rob @usuario`" }, { quoted: msg });
+    const targetId = getUserFromMessage(msg, args);
+    if (!targetId || !usersDb[targetId]) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "Debes mencionar a un usuario válido del grupo para robarle." }, { quoted: msg });
     }
 
-    const victim = usersDb[mentionedJid];
-    if (!victim) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "El usuario mencionado no está registrado." }, { quoted: msg });
-    }
-
-    if (senderId === mentionedJid) {
+    if (targetId === senderId) {
         return sock.sendMessage(msg.key.remoteJid, { text: "No puedes robarte a ti mismo." }, { quoted: msg });
     }
 
-    if ((victim.coins || 0) < 100) { // No robar a pobres
-        return sock.sendMessage(msg.key.remoteJid, { text: "La víctima es demasiado pobre, no vale la pena el riesgo." }, { quoted: msg });
-    }
+    const targetUser = usersDb[targetId];
+    initializeRpgUser(targetUser);
 
-    robber.lastRob = now;
+    user.lastRob = now;
 
-    // La probabilidad de éxito depende de la diferencia de nivel
-    const levelDifference = robber.level - victim.level;
-    const successChance = 0.5 + (levelDifference * 0.05); // 50% base, +/- 5% por cada nivel de diferencia
-    const finalSuccessChance = Math.max(0.1, Math.min(0.9, successChance)); // Clamp between 10% and 90%
+    const successChance = 0.40; // 40% de probabilidad de éxito
+    const roll = Math.random();
 
-    if (Math.random() < finalSuccessChance) {
-      // Éxito
-      const maxSteal = victim.coins * 0.25; // Roba hasta el 25%
-      const stolenAmount = Math.floor(Math.random() * maxSteal) + 1;
+    if (roll < successChance) {
+      const maxRobAmount = Math.floor(targetUser.coins * 0.15); // Robar hasta el 15%
+      if (maxRobAmount <= 0) {
+        return sock.sendMessage(msg.key.remoteJid, { text: "La víctima no tiene monedas para robar." }, { quoted: msg });
+      }
+      const amountStolen = Math.floor(Math.random() * maxRobAmount) + 1;
 
-      robber.coins += stolenAmount;
-      victim.coins -= stolenAmount;
-
-      const xpGained = Math.floor(stolenAmount / 10); // Gana XP basado en el robo
-      robber.xp += xpGained;
-
+      user.coins += amountStolen;
+      targetUser.coins -= amountStolen;
       writeUsersDb(usersDb);
 
-      const successMessage = `🚨 *¡Robo exitoso!* 🚨\n\n` +
-                             `Le has robado *${stolenAmount.toLocaleString()} monedas* a @${mentionedJid.split('@')[0]}.\n` +
-                             `También ganaste *${xpGained} XP*.`;
-
-      await sock.sendMessage(msg.key.remoteJid, { text: successMessage, mentions: [mentionedJid] }, { quoted: msg });
+      const successMessage = `*💰 ¡Robo Exitoso! 💰*\n\nTe escabulliste y lograste robar *${amountStolen}* monedas.`;
+      return sock.sendMessage(msg.key.remoteJid, { text: successMessage }, { quoted: msg });
 
     } else {
-      // Fracaso
-      const penalty = Math.floor(robber.coins * 0.1); // Pierde 10% de sus monedas
-      robber.coins -= penalty;
+      const fine = Math.floor(user.coins * 0.10); // Multa del 10% de tus monedas
+      user.coins -= fine;
       writeUsersDb(usersDb);
 
-      const failMessage = `🚓 *¡Te atraparon!* 🚓\n\n` +
-                          `Fallaste el robo y perdiste *${penalty.toLocaleString()} monedas* como multa.`;
-      await sock.sendMessage(msg.key.remoteJid, { text: failMessage }, { quoted: msg });
+      const failureMessage = `*🚨 ¡Robo Fallido! 🚨*\n\nTe atraparon y tuviste que pagar una multa de *${fine}* monedas.`;
+      return sock.sendMessage(msg.key.remoteJid, { text: failureMessage }, { quoted: msg });
     }
   }
 };

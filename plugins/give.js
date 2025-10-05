@@ -1,57 +1,57 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { initializeRpgUser, getUserFromMessage } from '../lib/utils.js';
 
 const giveCommand = {
   name: "give",
-  category: "economia",
+  category: "rpg",
   description: "Transfiere monedas a otro usuario.",
   aliases: ["dar", "transferir"],
+  group: true,
 
-  async execute({ sock, msg, args, config }) {
+  async execute({ sock, msg, args }) {
     const senderId = msg.sender;
     const usersDb = readUsersDb();
-    const senderUser = usersDb[senderId];
+    const user = usersDb[senderId];
 
-    if (!senderUser) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa `reg` para registrarte." }, { quoted: msg });
+    if (!user) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
-    const mentionedJid = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-    if (!mentionedJid) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "Debes mencionar a un usuario para transferirle monedas. Ejemplo: `give @usuario 100`" }, { quoted: msg });
+    initializeRpgUser(user);
+
+    const amountStr = args[0];
+    const amount = parseInt(amountStr, 10);
+
+    if (isNaN(amount) || amount <= 0) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "Por favor, especifica una cantidad válida de monedas para dar.\nEjemplo: `.give 100 @usuario`" }, { quoted: msg });
     }
 
-    const targetUser = usersDb[mentionedJid];
-    if (!targetUser) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "El usuario mencionado no está registrado." }, { quoted: msg });
+    const targetId = getUserFromMessage(msg, args.slice(1));
+    if (!targetId || !usersDb[targetId]) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "Debes mencionar a un usuario válido del grupo." }, { quoted: msg });
     }
 
-    if (senderId === mentionedJid) {
+    if (targetId === senderId) {
         return sock.sendMessage(msg.key.remoteJid, { text: "No puedes darte monedas a ti mismo." }, { quoted: msg });
     }
 
-    const amount = parseInt(args.find(arg => !arg.startsWith('@')));
-    if (isNaN(amount) || amount <= 0) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "Por favor, introduce una cantidad válida para transferir." }, { quoted: msg });
+    if ((user.coins || 0) < amount) {
+        return sock.sendMessage(msg.key.remoteJid, { text: "No tienes suficientes monedas para dar esa cantidad." }, { quoted: msg });
     }
 
-    if (senderUser.coins < amount) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `No tienes suficientes monedas. Saldo actual: ${senderUser.coins}` }, { quoted: msg });
-    }
+    const targetUser = usersDb[targetId];
+    initializeRpgUser(targetUser);
 
-    const tax = Math.floor(amount * config.taxRate);
-    const netAmount = amount - tax;
-
-    senderUser.coins -= amount;
-    targetUser.coins += netAmount;
+    user.coins -= amount;
+    targetUser.coins = (targetUser.coins || 0) + amount;
 
     writeUsersDb(usersDb);
 
-    const giveMessage = `✅ Has transferido *${amount} coins* a *${targetUser.name}*.\n` +
-                        `💸 Se aplicó un impuesto de ${config.taxRate * 100}% (*${tax} coins*).\n` +
-                        `💰 *${targetUser.name}* recibió *${netAmount} coins*.\n\n` +
-                        `Tu nuevo saldo: ${senderUser.coins} coins.`;
-
-    await sock.sendMessage(msg.key.remoteJid, { text: giveMessage, contextInfo: { mentionedJid: [mentionedJid] } }, { quoted: msg });
+    const successMessage = `*💸 Transferencia Exitosa 💸*\n\nHas transferido *${amount}* monedas a @${targetId.split('@')[0]}.`;
+    await sock.sendMessage(msg.key.remoteJid, {
+        text: successMessage,
+        mentions: [targetId]
+    }, { quoted: msg });
   }
 };
 
