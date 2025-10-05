@@ -1,12 +1,6 @@
 import axios from 'axios';
 import baileys from '@whiskeysockets/baileys';
 
-// Lista de APIs a utilizar, en orden de prioridad.
-const API_ENDPOINTS = [
-  'https://api.dorratz.com/v2/pinterest?q=',
-  'https://anime-xi-wheat.vercel.app/api/pinterest?q='
-];
-
 // --- Helper para enviar álbumes ---
 async function sendAlbum(sock, jid, medias, options = {}) {
   if (!medias || medias.length < 2) {
@@ -28,9 +22,9 @@ async function sendAlbum(sock, jid, medias, options = {}) {
 
   // Enviar cada imagen asociada al álbum
   for (let i = 0; i < medias.length; i++) {
-    const media = medias[i];
+    const mediaUrl = medias[i];
     const messageContent = {
-      image: { url: media.url },
+      image: { url: mediaUrl },
       ...(i === 0 && caption ? { caption } : {}) // Añadir caption solo a la primera
     };
 
@@ -72,58 +66,40 @@ const pinterestCommand = {
 
     await sock.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } });
 
-    let imageResults = [];
-
-    // Intentar con cada API de la lista
-    for (const apiUrl of API_ENDPOINTS) {
-      try {
-        const { data } = await axios.get(`${apiUrl}${encodeURIComponent(query)}`);
-
-        let processedResults = [];
-        if (apiUrl.includes('dorratz')) {
-          // La API de Dorratz devuelve un array de objetos
-          if (Array.isArray(data) && data.length > 0) {
-            processedResults = data.map(img => ({ url: img.image_large_url }));
-          }
-        } else if (apiUrl.includes('anime-xi-wheat')) {
-          // La otra API devuelve un objeto con un array de strings
-          if (data && Array.isArray(data.images) && data.images.length > 0) {
-            processedResults = data.images.map(url => ({ url }));
-          }
-        }
-
-        if (processedResults.length > 0) {
-          imageResults = processedResults;
-          break; // Si encontramos resultados, dejamos de buscar
-        }
-      } catch (error) {
-        console.error(`API ${apiUrl} falló:`, error.message);
-        // Si una API falla, el bucle continuará con la siguiente.
-      }
-    }
-
-    if (imageResults.length === 0) {
-      await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
-      return sock.sendMessage(msg.key.remoteJid, { text: `No se encontraron resultados para "${query}".` }, { quoted: msg });
-    }
-
-    const maxImages = Math.min(imageResults.length, 10);
-    const medias = imageResults.slice(0, maxImages);
-
     try {
+      const apiUrl = `https://api.dorratz.com/v2/pinterest?q=${encodeURIComponent(query)}`;
+      const { data } = await axios.get(apiUrl);
+
+      if (!Array.isArray(data) || data.length === 0) {
+        await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
+        return sock.sendMessage(msg.key.remoteJid, { text: `No se encontraron resultados para "${query}".` }, { quoted: msg });
+      }
+
+      const imageUrls = data.map(item => item.image_large_url).filter(Boolean); // Filtrar por si alguna URL es null
+
+      if (imageUrls.length === 0) {
+        await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
+        return sock.sendMessage(msg.key.remoteJid, { text: `No se encontraron imágenes válidas para "${query}".` }, { quoted: msg });
+      }
+
+      const maxImages = Math.min(imageUrls.length, 10);
+      const medias = imageUrls.slice(0, maxImages);
+
       if (medias.length < 2) {
-        await sock.sendMessage(msg.key.remoteJid, { image: { url: medias[0].url }, caption: `*📌 Resultado para:* ${query}` }, { quoted: msg });
+        await sock.sendMessage(msg.key.remoteJid, { image: { url: medias[0] }, caption: `*📌 Resultado para:* ${query}` }, { quoted: msg });
       } else {
         await sendAlbum(sock, msg.key.remoteJid, medias, {
           caption: `*📌 Resultados de:* ${query}\n*Imágenes:* ${maxImages}`,
           quoted: msg
         });
       }
+
       await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
+
     } catch (error) {
-      console.error("Error al enviar el álbum de Pinterest:", error);
+      console.error("Error en el comando pinterest:", error);
       await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
-      await sock.sendMessage(msg.key.remoteJid, { text: 'Ocurrió un error al enviar las imágenes.' }, { quoted: msg });
+      await sock.sendMessage(msg.key.remoteJid, { text: 'Ocurrió un error al buscar las imágenes en Pinterest.' }, { quoted: msg });
     }
   }
 };
