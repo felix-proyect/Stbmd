@@ -8,9 +8,9 @@ const bratCommand = {
   description: "Crea un sticker con un texto y un estilo particular.",
   aliases: [],
 
-  async execute({ sock, msg, text, usedPrefix, command, config }) {
+  async execute({ sock, msg, args, usedPrefix, command, config }) {
     const from = msg.key.remoteJid;
-    const inputText = text || msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation || '';
+    const inputText = args.join(' ') || msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation || '';
 
     if (!inputText.trim()) {
       return sock.sendMessage(from, { text: `❌ Por favor, proporciona un texto.\n\n*Ejemplo:*\n*${usedPrefix + command}* Hola Mundo` }, { quoted: msg });
