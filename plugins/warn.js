@@ -43,13 +43,6 @@ const warnCommand = {
         return sock.sendMessage(from, { text: "No tienes permisos de administrador para usar este comando." }, { quoted: msg });
       }
 
-      // El bot debe ser admin para poder expulsar
-      const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const botIsAdmin = metadata.participants.find(p => p.id === botJid)?.admin;
-       if (!botIsAdmin) {
-        return sock.sendMessage(from, { text: "Necesito ser administrador para poder aplicar advertencias y expulsar." }, { quoted: msg });
-      }
-
       const mentionedJid = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
       const quotedUserJid = msg.message?.extendedTextMessage?.contextInfo?.participant;
       const userToWarn = mentionedJid || quotedUserJid;
