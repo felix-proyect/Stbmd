@@ -1,68 +1,71 @@
 import { readUsersDb, writeUsersDb } from '../lib/database.js';
-import config from '../config.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 const slotsCommand = {
   name: "slots",
-  category: "economia",
-  description: "Juega a la máquina tragamonedas y prueba tu suerte. Uso: slots <apuesta>",
-  aliases: ["slot", "tragamonedas"],
+  category: "rpg",
+  description: "Juega a la máquina tragaperras. Uso: .slots <apuesta>",
+  aliases: ["tragamonedas"],
 
   async execute({ sock, msg, args }) {
     const senderId = msg.sender;
     const usersDb = readUsersDb();
     const user = usersDb[senderId];
-    const MIN_BET = 10;
+    const betAmount = parseInt(args[0], 10);
 
     if (!user) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa `reg`." }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
+    }
+    initializeRpgUser(user);
+
+    if (isNaN(betAmount) || betAmount <= 0) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "Debes especificar una cantidad válida para apostar." }, { quoted: msg });
+    }
+    if (user.coins < betAmount) {
+      return sock.sendMessage(msg.key.remoteJid, { text: `No tienes suficientes monedas para apostar ${betAmount}.` }, { quoted: msg });
     }
 
-    const bet = parseInt(args[0]);
-    if (isNaN(bet) || bet < MIN_BET) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `Debes apostar al menos ${MIN_BET} monedas.` }, { quoted: msg });
-    }
+    const symbols = ['🍒', '🍋', '🍊', '🍇', '🍉', '⭐', '💎', '7️⃣'];
+    const reel1 = symbols[Math.floor(Math.random() * symbols.length)];
+    const reel2 = symbols[Math.floor(Math.random() * symbols.length)];
+    const reel3 = symbols[Math.floor(Math.random() * symbols.length)];
 
-    if (user.coins < bet) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `No tienes suficientes monedas para apostar ${bet}. Saldo actual: ${user.coins}` }, { quoted: msg });
-    }
+    let resultMessage = `*🎰 Máquina Tragamonedas 🎰*\n\n` +
+                        `[ ${reel1} | ${reel2} | ${reel3} ]\n\n`;
 
-    user.coins -= bet; // Cobrar la apuesta por adelantado
+    let win = false;
+    let payout = 0;
 
-    const emojis = ["🍒", "🍋", "🍊", "🍉", "🍇", "💎", "🔔", " BAR "];
-    const results = [
-      emojis[Math.floor(Math.random() * emojis.length)],
-      emojis[Math.floor(Math.random() * emojis.length)],
-      emojis[Math.floor(Math.random() * emojis.length)]
-    ];
-
-    const resultString = `\n\n[ ${results.join(" | ")} ]\n\n`;
-    let winAmount = 0;
-
-    const [r1, r2, r3] = results;
-
-    if (r1 === "💎" && r2 === "💎" && r3 === "💎") {
-      winAmount = bet * 20;
-    } else if (r1 === r2 && r2 === r3) {
-      winAmount = bet * 10;
-    } else if (r1 === r2 || r2 === r3 || r1 === r3) {
-      winAmount = bet * 3;
-    }
-
-    let message;
-    if (winAmount > 0) {
-      const tax = Math.floor(winAmount * config.taxRate);
-      const netWin = winAmount - tax;
-      user.coins += netWin;
-      message = `*¡FELICIDADES!* Ganaste *${winAmount.toLocaleString()}* monedas.\n` +
-                `Tras un impuesto de *${tax.toLocaleString()}*, recibes *${netWin.toLocaleString()}*.\n`;
+    if (reel1 === reel2 && reel2 === reel3) {
+      win = true;
+      if (reel1 === '7️⃣') {
+        payout = betAmount * 10;
+        resultMessage += `*¡JACKPOT!* ¡Has ganado 10 veces tu apuesta!`;
+      } else if (reel1 === '💎') {
+        payout = betAmount * 7;
+        resultMessage += `*¡INCREÍBLE!* ¡Has ganado 7 veces tu apuesta!`;
+      } else {
+        payout = betAmount * 3;
+        resultMessage += `¡Has ganado 3 veces tu apuesta!`;
+      }
+    } else if (reel1 === reel2 || reel2 === reel3) {
+      win = true;
+      payout = betAmount * 2;
+      resultMessage += `¡Has ganado el doble de tu apuesta!`;
     } else {
-      message = "¡Mala suerte! Sigue intentándolo.";
+      resultMessage += `¡Mala suerte! Has perdido ${betAmount} monedas.`;
+    }
+
+    if (win) {
+      user.coins += payout;
+      resultMessage += `\n*Ganancia:* +${payout} monedas.`;
+    } else {
+      user.coins -= betAmount;
     }
 
     writeUsersDb(usersDb);
 
-    const finalMessage = `🎰 *Tragamonedas* 🎰\n*Apuesta:* ${bet.toLocaleString()}\n${resultString}${message}\n*Saldo final:* ${user.coins.toLocaleString()} monedas.`;
-    await sock.sendMessage(msg.key.remoteJid, { text: finalMessage }, { quoted: msg });
+    await sock.sendMessage(msg.key.remoteJid, { text: resultMessage }, { quoted: msg });
   }
 };
 
