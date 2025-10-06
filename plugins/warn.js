@@ -43,6 +43,7 @@ const warnCommand = {
         return sock.sendMessage(from, { text: "No tienes permisos de administrador para usar este comando." }, { quoted: msg });
       }
 
+      const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
       const mentionedJid = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
       const quotedUserJid = msg.message?.extendedTextMessage?.contextInfo?.participant;
       const userToWarn = mentionedJid || quotedUserJid;

@@ -1,30 +1,23 @@
-import { readUsersDb, writeUsersDb, checkLevelUp } from '../lib/database.js';
+import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 const dungeonCommand = {
   name: "dungeon",
   category: "rpg",
-  description: "Entra en una peligrosa mazmorra con la esperanza de encontrar grandes recompensas.",
+  description: "Adéntrate en una peligrosa mazmorra para luchar contra monstruos y obtener grandes recompensas.",
   aliases: ["mazmorra"],
 
   async execute({ sock, msg }) {
     const senderId = msg.sender;
     const usersDb = readUsersDb();
     const user = usersDb[senderId];
-    const COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 horas
-    const MIN_LEVEL = 5;
 
-    if (!user || !user.level) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado en el RPG. Usa `reg`." }, { quoted: msg });
+    if (!user) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
+    initializeRpgUser(user);
 
-    if (user.level < MIN_LEVEL) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `Necesitas ser al menos nivel ${MIN_LEVEL} para entrar en una mazmorra.` }, { quoted: msg });
-    }
-
-    if (user.hp < user.maxHp * 0.5) {
-        return sock.sendMessage(msg.key.remoteJid, { text: `Estás muy herido para entrar en una mazmorra. Cúrate primero.` }, { quoted: msg });
-    }
-
+    const COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 horas de cooldown
     const lastDungeon = user.lastDungeon || 0;
     const now = Date.now();
 
@@ -32,49 +25,65 @@ const dungeonCommand = {
       const timeLeft = COOLDOWN_MS - (now - lastDungeon);
       const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
       const minutesLeft = Math.ceil((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      return sock.sendMessage(msg.key.remoteJid, { text: `Las mazmorras aún se están re-poblando. Vuelve en ${hoursLeft}h y ${minutesLeft}m.` }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: `Aún estás recuperándote de tu última incursión. Podrás entrar a otra mazmorra en ${hoursLeft}h y ${minutesLeft}m.` }, { quoted: msg });
+    }
+
+    if (user.hp < user.maxHp * 0.5) {
+        return sock.sendMessage(msg.key.remoteJid, { text: `Estás demasiado herido para entrar en una mazmorra. Necesitas al menos el 50% de tu HP. ¡Cúrate!` }, { quoted: msg });
     }
 
     user.lastDungeon = now;
 
-    const successChance = 0.6 + (user.level - MIN_LEVEL) * 0.02; // Aumenta la probabilidad con el nivel
-    let message;
+    const floors = 5;
+    let currentFloor = 1;
+    let totalCoinsGained = 0;
+    let totalXpGained = 0;
+    let combatLog = `*🕯️ Entrando a la Mazmorra... 🕯️*\n\n`;
 
-    if (Math.random() < successChance) {
-      // Éxito
-      const xpGained = Math.floor(Math.random() * 250) + 150; // 150-400 XP
-      const coinsGained = Math.floor(Math.random() * 500) + 300; // 300-800 coins
-      const hpLost = Math.floor(Math.random() * 30) + 20; // 20-50 HP
+    while (currentFloor <= floors && user.hp > 0) {
+      const monsterPower = (user.level * 5) + (currentFloor * 10) + (Math.floor(Math.random() * 20));
+      const playerPower = user.strength + user.defense;
 
-      user.xp += xpGained;
-      user.coins += coinsGained;
-      user.hp = Math.max(0, user.hp - hpLost);
+      combatLog += `*Piso ${currentFloor}/${floors}:*\n`;
 
-      message = `¡Conseguiste atravesar la mazmorra y derrotar al jefe!\n\n` +
-                `Ganaste *${xpGained} XP* y *${coinsGained} monedas*.\n` +
-                `Perdiste *${hpLost} HP* en el proceso.`;
+      if (playerPower > monsterPower) {
+        const floorCoins = 50 * currentFloor;
+        const floorXp = 30 * currentFloor;
+        totalCoinsGained += floorCoins;
+        totalXpGained += floorXp;
+
+        combatLog += `> ✅ Has derrotado al guardián. Ganas ${floorCoins} monedas y ${floorXp} XP.\n\n`;
+        currentFloor++;
+      } else {
+        const damageTaken = Math.floor(monsterPower / 3 - user.defense / 2);
+        user.hp = Math.max(0, user.hp - damageTaken);
+
+        combatLog += `> ❌ El guardián te ha herido. Pierdes ${damageTaken} HP.\n`+
+                     `> Te quedan ${user.hp}/${user.maxHp} HP.\n\n`;
+        break; // El jugador es derrotado y sale de la mazmorra
+      }
+    }
+
+    user.coins += totalCoinsGained;
+    user.xp += totalXpGained;
+
+    if (user.hp <= 0) {
+        combatLog += `*💀 Has sido derrotado y escapas de la mazmorra!*`;
+        user.hp = 1; // Queda con 1 de vida
+    } else if (currentFloor > floors) {
+        combatLog += `*🏆 ¡Felicidades! 🏆*\n\n¡Has conquistado todos los pisos de la mazmorra!\n\n` +
+                     `*Recompensa Total:*\n` +
+                     `> 💰 ${totalCoinsGained} Monedas\n` +
+                     `> ✨ ${totalXpGained} XP`;
     } else {
-      // Fracaso
-      const hpLost = Math.floor(user.hp * 0.75); // Pierde el 75% de su vida actual
-      user.hp -= hpLost;
-
-      message = `Los monstruos de la mazmorra te abrumaron. Apenas lograste escapar con vida.\n\n` +
-                `Perdiste *${hpLost} HP*. No obtuviste recompensas.`;
+        combatLog += `*🏃‍♂️ Escapas de la mazmorra con tus ganancias...*\n\n`+
+                     `*Botín Obtenido:*\n` +
+                     `> 💰 ${totalCoinsGained} Monedas\n` +
+                     `> ✨ ${totalXpGained} XP`;
     }
 
-    if (user.hp === 0) {
-        message += `\n\n*¡Has sido derrotado!* Necesitas curarte para seguir luchando.`;
-    }
-
-    const levelUpMessage = checkLevelUp(user);
     writeUsersDb(usersDb);
-
-    let fullMessage = `🐉 *Explorando Mazmorra...*\n\n${message}`;
-    if (levelUpMessage) {
-      fullMessage += `\n\n${levelUpMessage}`;
-    }
-
-    await sock.sendMessage(msg.key.remoteJid, { text: fullMessage }, { quoted: msg });
+    await sock.sendMessage(msg.key.remoteJid, { text: combatLog.trim() }, { quoted: msg });
   }
 };
 

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import StickerFormatter from 'wa-sticker-formatter';
+import { readUsersDb } from '../lib/database.js';
 const { Sticker, StickerTypes } = StickerFormatter;
 
 const qcCommand = {
@@ -10,15 +11,35 @@ const qcCommand = {
 
   async execute({ sock, msg, args, config }) {
     const from = msg.key.remoteJid;
-    let who = m.quoted ? m.quoted.sender : m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.fromMe ? conn.user.jid : m.sender;
-    let text;
+    const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const mentionedJid = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
-    // Determinar el texto a usar
-    if (m.quoted?.text) {
-        text = m.quoted.text;
+    let who = mentionedJid || quoted?.participant || msg.sender;
+    let text;
+    let color = 'black';
+
+    const validColors = {
+        pink: '#FFC0CB', red: '#FF0000', blue: '#0000FF', green: '#008000', yellow: '#FFFF00',
+        black: '#000000', white: '#FFFFFF', orange: '#FFA500', purple: '#800080', brown: '#A52A2A'
+    };
+
+    // Determinar el texto y el color
+    if (quoted?.conversation) {
+        text = quoted.conversation;
+        if (args.length > 0 && validColors[args[0].toLowerCase()]) {
+            color = args[0].toLowerCase();
+        }
     } else {
-        // Asumimos que el color puede ser el primer argumento
-        text = args.slice(1).join(' ');
+        if (args.length > 0 && validColors[args[0].toLowerCase()]) {
+            color = args[0].toLowerCase();
+            text = args.slice(1).join(' ');
+        } else {
+            text = args.join(' ');
+        }
+    }
+
+    if (!text) {
+        return sock.sendMessage(from, { text: `📌 *Ejemplo de uso:*\n.qc [color] <texto>\n\nO responde a un mensaje con .qc [color]\n\n*Colores disponibles:*\n${Object.keys(validColors).join(', ')}` }, { quoted: msg });
     }
 
     // Obtener la foto de perfil
@@ -29,32 +50,8 @@ const qcCommand = {
         ppUrl = 'https://telegra.ph/file/320b066dc81928b782c7b.png'; // URL por defecto
     }
 
-    // Limpiar la mención del texto si existe
-    const mentionRegex = new RegExp(`@${who.split('@')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'g');
-    const cleanText = text.replace(mentionRegex, '');
-
-    // Obtener el nombre del usuario
-    const userInfo = global.db.data.users[who];
-    const name = userInfo?.name || who.split('@')[0];
-
-    const validColors = {
-        pink: '#FFC0CB', red: '#FF0000', blue: '#0000FF', green: '#008000', yellow: '#FFFF00',
-        black: '#000000', white: '#FFFFFF', orange: '#FFA500', purple: '#800080', brown: '#A52A2A'
-        // Se pueden añadir más colores aquí
-    };
-
-    let color = 'black';
-    if (args.length > 0 && validColors[args[0].toLowerCase()]) {
-        color = args[0].toLowerCase();
-        // Si el texto no fue tomado de un mensaje citado, lo reajustamos para quitar el color
-        if (!m.quoted?.text) {
-            text = args.slice(1).join(' ');
-        }
-    }
-
-    if (!text) {
-        return sock.sendMessage(from, { text: `📌 *Ejemplo de uso:*\n.qc [color] <texto>\n\nO responde a un mensaje con .qc [color]\n\n*Colores disponibles:*\n${Object.keys(validColors).join(', ')}` }, { quoted: msg });
-    }
+    const usersDb = readUsersDb();
+    const name = usersDb[who]?.name || who.split('@')[0];
 
     const payload = {
         type: "quote",

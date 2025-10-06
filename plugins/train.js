@@ -1,70 +1,67 @@
-import { readUsersDb, writeUsersDb, checkLevelUp } from '../lib/database.js';
+import { readUsersDb, writeUsersDb } from '../lib/database.js';
+import { initializeRpgUser } from '../lib/utils.js';
 
 const trainCommand = {
   name: "train",
   category: "rpg",
-  description: "Entrena tus atributos para volverte más fuerte.",
+  description: "Entrena tus estadísticas para volverte más fuerte. Uso: .train <fuerza|defensa>",
   aliases: ["entrenar"],
 
-  async execute({ sock, msg }) {
+  async execute({ sock, msg, args }) {
     const senderId = msg.sender;
     const usersDb = readUsersDb();
     const user = usersDb[senderId];
-    const COOLDOWN_MS = 60 * 60 * 1000; // 1 hora
-    const COST = 200; // Costo en monedas para entrenar
+    const statToTrain = args[0]?.toLowerCase();
 
-    if (!user || !user.level) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado en el RPG. Usa `reg`." }, { quoted: msg });
+    if (!user) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
-    if (user.coins < COST) {
-        return sock.sendMessage(msg.key.remoteJid, { text: `No tienes suficientes monedas para entrenar. Necesitas ${COST} monedas.` }, { quoted: msg });
+    initializeRpgUser(user);
+
+    if (!statToTrain || (statToTrain !== 'fuerza' && statToTrain !== 'defensa')) {
+        return sock.sendMessage(msg.key.remoteJid, { text: "Debes especificar qué estadística quieres entrenar: `fuerza` o `defensa`." }, { quoted: msg });
     }
 
+    const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutos
     const lastTrain = user.lastTrain || 0;
     const now = Date.now();
 
     if (now - lastTrain < COOLDOWN_MS) {
       const timeLeft = COOLDOWN_MS - (now - lastTrain);
       const minutesLeft = Math.ceil(timeLeft / (1000 * 60));
-      return sock.sendMessage(msg.key.remoteJid, { text: `Aún estás cansado de tu último entrenamiento. Vuelve en ${minutesLeft}m.` }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: `Necesitas descansar. Vuelve a entrenar en ${minutesLeft} minutos.` }, { quoted: msg });
     }
 
+    const baseCost = 100;
+    const currentStatValue = user[statToTrain === 'fuerza' ? 'strength' : 'defense'];
+    const cost = baseCost + (currentStatValue * 20); // El costo aumenta con el nivel de la estadística
+
+    if (user.coins < cost) {
+        return sock.sendMessage(msg.key.remoteJid, { text: `No tienes suficientes monedas para entrenar. Necesitas ${cost} WFCoins.` }, { quoted: msg });
+    }
+
+    user.coins -= cost;
     user.lastTrain = now;
-    user.coins -= COST;
 
-    // Aumentar un stat aleatorio
-    const statRoll = Math.floor(Math.random() * 3);
-    let statImproved = "";
-    let improvement = 1;
+    let statGain = 1;
+    let statNameSpanish = "";
 
-    if (statRoll === 0) {
-        user.strength += improvement;
-        statImproved = "Fuerza";
-    } else if (statRoll === 1) {
-        user.defense += improvement;
-        statImproved = "Defensa";
+    if (statToTrain === 'fuerza') {
+        user.strength += statGain;
+        statNameSpanish = "Fuerza";
     } else {
-        user.speed += improvement;
-        statImproved = "Velocidad";
+        user.defense += statGain;
+        statNameSpanish = "Defensa";
     }
 
-    const xpGained = 50;
-    user.xp += xpGained;
-
-    let message = `Pagaste *${COST} monedas* y entrenaste duro.\n\n` +
-                  `Tu *${statImproved}* ha aumentado en *${improvement}*.\n` +
-                  `Ganaste *${xpGained} XP*.`;
-
-    const levelUpMessage = checkLevelUp(user);
     writeUsersDb(usersDb);
 
-    let fullMessage = `💪 *Sesión de Entrenamiento...*\n\n${message}`;
-    if (levelUpMessage) {
-      fullMessage += `\n\n${levelUpMessage}`;
-    }
+    const successMessage = `*💪 Entrenamiento Completado 💪*\n\n` +
+                           `Has pagado ${cost} WFCoins y has entrenado duro.\n` +
+                           `¡Tu *${statNameSpanish}* ha aumentado en +${statGain}!`;
 
-    await sock.sendMessage(msg.key.remoteJid, { text: fullMessage }, { quoted: msg });
+    await sock.sendMessage(msg.key.remoteJid, { text: successMessage }, { quoted: msg });
   }
 };
 

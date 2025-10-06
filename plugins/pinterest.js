@@ -1,61 +1,91 @@
 import axios from 'axios';
 import https from 'https';
+import baileys from '@whiskeysockets/baileys';
 
-// Agente para ignorar la validación del certificado SSL, haciendo la conexión más robusta.
+// Agente para ignorar la validación del certificado SSL
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 
+// --- Helper para enviar álbumes ---
+async function sendAlbum(sock, jid, medias, options = {}) {
+  if (!medias || medias.length < 2) {
+    throw new Error("Se necesitan al menos 2 imágenes para un álbum.");
+  }
+
+  const caption = options.caption || "";
+  const delay = options.delay || 500;
+
+  const albumMessage = await baileys.generateWAMessageFromContent(
+    jid,
+    { albumMessage: { expectedImageCount: medias.length } },
+    { userJid: sock.user.id }
+  );
+
+  await sock.relayMessage(albumMessage.key.remoteJid, albumMessage.message, { messageId: albumMessage.key.id });
+
+  for (let i = 0; i < medias.length; i++) {
+    const mediaUrl = medias[i];
+    const messageContent = {
+      image: { url: mediaUrl },
+      ...(i === 0 && caption ? { caption } : {})
+    };
+
+    const waMessage = await baileys.generateWAMessage(
+      jid,
+      messageContent,
+      {
+        upload: sock.waUploadToServer,
+        quoted: options.quoted
+      }
+    );
+
+    waMessage.message.messageContextInfo = {
+      messageAssociation: {
+        associationType: 1,
+        parentMessageKey: albumMessage.key
+      },
+    };
+
+    await sock.relayMessage(jid, waMessage.message, { messageId: waMessage.key.id });
+    await baileys.delay(delay);
+  }
+  return albumMessage;
+}
+
+
 const pinterestCommand = {
   name: "pinterest",
   category: "descargas",
-  description: "Busca imágenes en Pinterest. Puedes especificar la cantidad.",
+  description: "Busca y descarga todas las imágenes encontradas en Pinterest.",
   aliases: ["pin"],
 
   async execute({ sock, msg, text, usedPrefix, command }) {
     if (!text) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `✧ Por favor, proporciona un término de búsqueda.\n\n*Ejemplo:*\n*${usedPrefix + command} Gura 5*` }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: `*📌 Uso Correcto:*\n*${usedPrefix + command}* Gura` }, { quoted: msg });
     }
 
-    const args = text.split(' ');
-    let query = '';
-    let count = 1; // Número de imágenes por defecto
-
-    // Comprobar si el último argumento es un número para la cantidad
-    const lastArg = parseInt(args[args.length - 1], 10);
-    if (!isNaN(lastArg)) {
-      count = Math.min(lastArg, 15); // Limitar a un máximo de 15 para no saturar
-      query = args.slice(0, -1).join(' ');
-    } else {
-      query = text;
-    }
-
-    if (!query) {
-      return sock.sendMessage(msg.key.remoteJid, { text: `✧ Debes proporcionar un término de búsqueda.\n\n*Ejemplo:*\n*${usedPrefix + command} Gura 5*` }, { quoted: msg });
-    }
-
-    await sock.sendMessage(msg.key.remoteJid, { text: `Buscando ${count} imagen(es) de "${query}" en Pinterest...` }, { quoted: m });
-    await sock.sendMessage(msg.key.remoteJid, { react: { text: '🕒', key: msg.key } });
+    await sock.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } });
 
     try {
-      const apiUrl = `https://api.platform.web.id/pinterest?q=${encodeURIComponent(query)}`;
+      const apiUrl = `https://api.platform.web.id/pinterest?q=${encodeURIComponent(text)}`;
       const { data } = await axios.get(apiUrl, { httpsAgent });
 
       if (data.status !== true || !data.results || data.results.length === 0) {
         throw new Error('No se encontraron imágenes para esa búsqueda.');
       }
 
-      const results = data.results;
+      const imageUrls = data.results;
 
-      // Barajar el array de resultados para obtener variedad
-      results.sort(() => 0.5 - Math.random());
+      await sock.sendMessage(msg.key.remoteJid, { text: `Encontré ${imageUrls.length} imágenes. Enviando álbum...`}, { quoted: msg });
 
-      // Enviar el número de imágenes solicitado
-      for (let i = 0; i < Math.min(count, results.length); i++) {
-        await sock.sendMessage(msg.key.remoteJid, {
-            image: { url: results[i] },
-            caption: `Imagen ${i + 1}/${count} de "${query}"`
-        }, { quoted: msg });
+      if (imageUrls.length < 2) {
+        await sock.sendMessage(msg.key.remoteJid, { image: { url: imageUrls[0] }, caption: `*📌 Resultado para:* ${text}` }, { quoted: msg });
+      } else {
+        await sendAlbum(sock, msg.key.remoteJid, imageUrls, {
+          caption: `*📌 Resultados de:* ${text}`,
+          quoted: msg
+        });
       }
 
       await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
