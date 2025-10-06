@@ -18,18 +18,18 @@ const dailyCommand = {
 
     initializeRpgUser(user);
 
-    const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 horas
+    const COOLDOWN_MS = 22 * 60 * 60 * 1000; // 22 horas para dar un margen
     const lastDaily = user.lastDaily || 0;
     const now = Date.now();
 
     if (now - lastDaily < COOLDOWN_MS) {
       const timeLeft = COOLDOWN_MS - (now - lastDaily);
       const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const minutesLeft = Math.ceil((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       return sock.sendMessage(msg.key.remoteJid, { text: `Ya reclamaste tu recompensa diaria. Vuelve en ${hoursLeft}h y ${minutesLeft}m.` }, { quoted: msg });
     }
 
-    const reward = 500; // Recompensa de 500 monedas
+    const reward = 500 + Math.floor(user.level * 10); // Recompensa base + bonus por nivel
     user.coins = (user.coins || 0) + reward;
     user.lastDaily = now;
 
