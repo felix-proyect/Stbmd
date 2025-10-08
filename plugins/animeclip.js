@@ -8,42 +8,46 @@ const animeclipCommand = {
 
   async execute({ sock, msg }) {
     const chat = msg.key.remoteJid;
+
+    // Aviso de búsqueda
     await sock.sendMessage(chat, { text: "🎬 *Buscando un clip de anime...* 🌸" }, { quoted: msg });
 
-    // 🌐 APIs públicas (solo las que pueden devolver videos o GIFs)
+    // APIs que pueden devolver video o gif
     const apis = [
       "https://api.waifu.pics/sfw/dance",
       "https://api.waifu.pics/sfw/wink",
-      "https://api.waifu.pics/sfw/waifu",
+      "https://api.waifu.pics/sfw/happy",
+      "https://api.waifu.pics/sfw/cringe",
       "https://nekos.best/api/v2/dance",
-      "https://api.nekos.dev/api/v3/images/sfw/gif/dance",
-      "https://kawaii.red/api/gif/dance/tokenfree",
       "https://nekos.best/api/v2/wave",
-      "https://api.waifu.pics/sfw/happy"
+      "https://api.otakugifs.xyz/gif?reaction=dance",
+      "https://api.otakugifs.xyz/gif?reaction=smile",
+      "https://kawaii.red/api/gif/wave/tokenfree"
     ];
 
     let mediaUrl = null;
 
-    // 🌀 Intentar obtener un video o gif válido de varias APIs
+    // Intentar obtener una URL válida
     for (const api of apis.sort(() => Math.random() - 0.5)) {
       try {
         const res = await axios.get(api, { timeout: 15000 });
 
-        // Buscamos la URL en varias estructuras posibles
-        const urlCandidates = [
+        // Buscar posibles rutas donde venga la URL
+        const candidates = [
           res.data?.url,
+          res.data?.response?.url,
           res.data?.results?.[0]?.url,
           res.data?.data?.[0]?.url,
-          res.data?.response?.[0]?.url
+          res.data?.gif
         ].filter(Boolean);
 
-        const foundUrl = urlCandidates.find(u => /\.(mp4|gif)$/i.test(u));
-        if (foundUrl) {
-          mediaUrl = foundUrl;
+        const found = candidates.find(u => /\.(mp4|gif)$/i.test(u));
+        if (found) {
+          mediaUrl = found;
           break;
         }
       } catch (err) {
-        console.log(`❌ API fallida: ${api}`);
+        console.log("API fallida:", api);
       }
     }
 
@@ -52,22 +56,17 @@ const animeclipCommand = {
     }
 
     try {
-      const response = await axios.get(mediaUrl, {
-        responseType: "arraybuffer",
-        timeout: 30000
-      });
+      // Descargar el contenido
+      const response = await axios.get(mediaUrl, { responseType: "arraybuffer", timeout: 30000 });
+      const contentType = response.headers["content-type"] || "";
 
-      const contentType = response.headers["content-type"];
-      const isVideo = contentType?.startsWith("video/");
-      const isGif = contentType?.includes("gif");
-
-      if (!isVideo && !isGif) {
-        throw new Error("El archivo no es un video ni un gif válido.");
-      }
+      const isVideo = contentType.includes("video");
+      const isGif = contentType.includes("gif");
+      if (!isVideo && !isGif) throw new Error("No es video ni gif válido.");
 
       const buffer = Buffer.from(response.data, "binary");
 
-      // 🌸 Decoraciones aleatorias
+      // Decoraciones
       const decoraciones = [
         "🌸✨💫🎬",
         "🎥🌈🌺🩵",
@@ -79,7 +78,7 @@ const animeclipCommand = {
 
       const caption = `${deco}\n*🌸 Anime Clip Aleatorio 🌸*\n${deco}\n\n🎞️ Disfruta del ritmo y la magia del anime 💫`;
 
-      // 🎥 Enviar el video o gif según el tipo
+      // Enviar video o gif
       if (isVideo) {
         await sock.sendMessage(chat, {
           video: buffer,
@@ -89,16 +88,16 @@ const animeclipCommand = {
       } else {
         await sock.sendMessage(chat, {
           image: buffer,
-          caption,
-          mimetype: "image/gif"
+          mimetype: "image/gif",
+          caption
         }, { quoted: msg });
       }
 
     } catch (err) {
-      console.error("⚠️ Error al enviar el clip:", err);
-      await sock.sendMessage(chat, { text: "⚠️ Hubo un error al obtener el clip. Intenta nuevamente." }, { quoted: msg });
+      console.error("⚠️ Error al enviar el clip:", err.message);
+      await sock.sendMessage(chat, { text: "⚠️ Hubo un error al enviar el clip. Intenta de nuevo." }, { quoted: msg });
     }
-  },
+  }
 };
 
 export default animeclipCommand;
