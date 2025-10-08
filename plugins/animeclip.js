@@ -32,8 +32,7 @@ const animeclipCommand = {
       try {
         const res = await axios.get(api, { timeout: 15000 });
 
-        // Buscar posibles rutas donde venga la URL
-        const candidates = [
+        const posiblesUrls = [
           res.data?.url,
           res.data?.response?.url,
           res.data?.results?.[0]?.url,
@@ -41,45 +40,40 @@ const animeclipCommand = {
           res.data?.gif
         ].filter(Boolean);
 
-        const found = candidates.find(u => /\.(mp4|gif)$/i.test(u));
-        if (found) {
-          mediaUrl = found;
+        const encontrada = posiblesUrls.find(u => /\.(mp4|gif)$/i.test(u));
+        if (encontrada) {
+          mediaUrl = encontrada;
           break;
         }
       } catch (err) {
-        console.log("API fallida:", api);
+        console.log("❌ Falló API:", api);
       }
     }
 
     if (!mediaUrl) {
-      return sock.sendMessage(chat, { text: "🚫 No se pudo encontrar un video o GIF de anime en este momento." }, { quoted: msg });
+      return sock.sendMessage(chat, { text: "🚫 No se pudo encontrar un clip o GIF de anime en este momento." }, { quoted: msg });
     }
 
     try {
       // Descargar el contenido
-      const response = await axios.get(mediaUrl, { responseType: "arraybuffer", timeout: 30000 });
-      const contentType = response.headers["content-type"] || "";
+      const res = await axios.get(mediaUrl, { responseType: "arraybuffer", timeout: 30000 });
+      const contentType = res.headers["content-type"] || "";
+      const buffer = Buffer.from(res.data, "binary");
 
-      const isVideo = contentType.includes("video");
-      const isGif = contentType.includes("gif");
-      if (!isVideo && !isGif) throw new Error("No es video ni gif válido.");
+      // Detectar tipo
+      const esVideo = contentType.includes("video") || mediaUrl.endsWith(".mp4");
+      const esGif = contentType.includes("gif") || mediaUrl.endsWith(".gif");
 
-      const buffer = Buffer.from(response.data, "binary");
-
-      // Decoraciones
+      // Decoraciones aleatorias
       const decoraciones = [
-        "🌸✨💫🎬",
-        "🎥🌈🌺🩵",
-        "💞🌸🎶🌟",
-        "🎬🩷🌼🌠",
-        "🌸🎞️💫🎀"
+        "🌸✨💫🎬", "🎥🌈🌺🩵", "💞🌸🎶🌟", "🎬🩷🌼🌠", "🌸🎞️💫🎀"
       ];
       const deco = decoraciones[Math.floor(Math.random() * decoraciones.length)];
 
       const caption = `${deco}\n*🌸 Anime Clip Aleatorio 🌸*\n${deco}\n\n🎞️ Disfruta del ritmo y la magia del anime 💫`;
 
-      // Enviar video o gif
-      if (isVideo) {
+      // Enviar según tipo
+      if (esVideo || esGif) {
         await sock.sendMessage(chat, {
           video: buffer,
           mimetype: "video/mp4",
@@ -88,7 +82,6 @@ const animeclipCommand = {
       } else {
         await sock.sendMessage(chat, {
           image: buffer,
-          mimetype: "image/gif",
           caption
         }, { quoted: msg });
       }
