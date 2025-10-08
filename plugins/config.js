@@ -15,24 +15,24 @@ const configCommand = {
     const groupSettings = settings[from] || {};
 
     // Función para obtener el estado como emoji y texto
-    const getStatus = (value) => {
-      return value ? "✅ Activado" : "❌ Desactivado";
-    };
+    const getStatus = (value) => (value ? "✅ Activado" : "❌ Desactivado");
 
     const adminModeStatus = getStatus(groupSettings.adminMode);
     const welcomeStatus = getStatus(groupSettings.welcome);
     const byeStatus = getStatus(groupSettings.bye);
-    const prefix = groupSettings.prefix ? `\`${groupSettings.prefix}\`` : "No establecido (usa el global)";
+    const prefix = groupSettings.prefix ? `\`${groupSettings.prefix}\`` : "🌐 Prefijo global";
 
-    let configMessage = `*⚙️ Configuración del Bot para este Grupo ⚙️*\n\n`;
-    configMessage += `1. *Modo Admin:* ${adminModeStatus}\n`;
-    configMessage += `   - _Si está activado, solo los admins pueden usar el bot._\n\n`;
-    configMessage += `2. *Bienvenidas:* ${welcomeStatus}\n`;
-    configMessage += `   - _Mensaje de bienvenida para nuevos miembros._\n\n`;
-    configMessage += `3. *Despedidas:* ${byeStatus}\n`;
-    configMessage += `   - _Mensaje de despedida cuando alguien se va._\n\n`;
-    configMessage += `4. *Prefijo del Grupo:* ${prefix}\n`;
-    configMessage += `   - _Prefijo personalizado para los comandos en este grupo._\n`;
+    // Bordes y decoración
+    const borderTop = "╭─❖✦❖─╮";
+    const borderBottom = "╰─❖✦❖─╯";
+    const decoLine = "✨━━━━━━━━━━━━✨";
+
+    let configMessage = `${borderTop}\n⚙️ *Configuración del Bot para este Grupo* ⚙️\n${borderTop}\n\n`;
+    configMessage += `1️⃣ *Modo Admin:* ${adminModeStatus}\n   _Si está activado, solo los admins pueden usar el bot._\n\n`;
+    configMessage += `2️⃣ *Bienvenidas:* ${welcomeStatus}\n   _Mensaje de bienvenida para nuevos miembros._\n\n`;
+    configMessage += `3️⃣ *Despedidas:* ${byeStatus}\n   _Mensaje de despedida cuando alguien se va._\n\n`;
+    configMessage += `4️⃣ *Prefijo del Grupo:* ${prefix}\n   _Prefijo personalizado para los comandos en este grupo._\n\n`;
+    configMessage += `${decoLine}\n🌸 ¡Disfruta tu bot decorado! 🌸\n${borderBottom}`;
 
     await sock.sendMessage(from, { text: configMessage.trim() }, { quoted: msg });
   }
