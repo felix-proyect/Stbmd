@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
-import config from '../../config.js';
+
+const IA_API_KEY = '22f66JK9VLbTZVgC8chFAYRA';
 
 const iaCommand = {
   name: "ia",
@@ -8,13 +9,6 @@ const iaCommand = {
   aliases: ["ask", "ai"],
 
   async execute({ sock, msg, args }) {
-    const IA_API_KEY = config.api.searchapi;
-    if (!IA_API_KEY) {
-      return sock.sendMessage(msg.key.remoteJid, {
-        text: `🤖 La API key de SearchAPI no está configurada. Por favor, añádela en el archivo de configuración.`
-      }, { quoted: msg });
-    }
-
     const query = args.join(' ');
     if (!query) {
       return sock.sendMessage(msg.key.remoteJid, {
