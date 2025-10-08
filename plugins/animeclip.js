@@ -1,18 +1,22 @@
 import axios from "axios";
+import fs from "fs";
+import path from "path";
+import { exec } from "child_process";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const animeclipCommand = {
   name: "animeclip",
   category: "diversion",
-  description: "Envía un clip o GIF de anime aleatorio.",
+  description: "Envía un clip o GIF de anime aleatorio (convertido a video válido).",
   aliases: ["clip", "animevideo"],
 
   async execute({ sock, msg }) {
     const chat = msg.key.remoteJid;
-
-    // Aviso de búsqueda
     await sock.sendMessage(chat, { text: "🎬 *Buscando un clip de anime...* 🌸" }, { quoted: msg });
 
-    // APIs que pueden devolver video o gif
     const apis = [
       "https://api.waifu.pics/sfw/dance",
       "https://api.waifu.pics/sfw/wink",
@@ -27,22 +31,19 @@ const animeclipCommand = {
 
     let mediaUrl = null;
 
-    // Intentar obtener una URL válida
     for (const api of apis.sort(() => Math.random() - 0.5)) {
       try {
         const res = await axios.get(api, { timeout: 15000 });
-
-        const posiblesUrls = [
+        const urls = [
           res.data?.url,
           res.data?.response?.url,
           res.data?.results?.[0]?.url,
           res.data?.data?.[0]?.url,
           res.data?.gif
         ].filter(Boolean);
-
-        const encontrada = posiblesUrls.find(u => /\.(mp4|gif)$/i.test(u));
-        if (encontrada) {
-          mediaUrl = encontrada;
+        const found = urls.find(u => /\.(mp4|gif)$/i.test(u));
+        if (found) {
+          mediaUrl = found;
           break;
         }
       } catch (err) {
@@ -51,44 +52,50 @@ const animeclipCommand = {
     }
 
     if (!mediaUrl) {
-      return sock.sendMessage(chat, { text: "🚫 No se pudo encontrar un clip o GIF de anime en este momento." }, { quoted: msg });
+      return sock.sendMessage(chat, { text: "🚫 No se encontró ningún clip en este momento." }, { quoted: msg });
     }
 
     try {
-      // Descargar el contenido
-      const res = await axios.get(mediaUrl, { responseType: "arraybuffer", timeout: 30000 });
-      const contentType = res.headers["content-type"] || "";
-      const buffer = Buffer.from(res.data, "binary");
+      const response = await axios.get(mediaUrl, { responseType: "arraybuffer", timeout: 30000 });
+      const contentType = response.headers["content-type"] || "";
+      const buffer = Buffer.from(response.data, "binary");
 
-      // Detectar tipo
-      const esVideo = contentType.includes("video") || mediaUrl.endsWith(".mp4");
-      const esGif = contentType.includes("gif") || mediaUrl.endsWith(".gif");
+      const tempInput = path.join(__dirname, "animeclip_input." + (mediaUrl.endsWith(".gif") ? "gif" : "mp4"));
+      const tempOutput = path.join(__dirname, "animeclip_output.mp4");
 
-      // Decoraciones aleatorias
-      const decoraciones = [
-        "🌸✨💫🎬", "🎥🌈🌺🩵", "💞🌸🎶🌟", "🎬🩷🌼🌠", "🌸🎞️💫🎀"
-      ];
+      fs.writeFileSync(tempInput, buffer);
+
+      const decoraciones = ["🌸✨💫🎬", "🎥🌈🌺🩵", "💞🌸🎶🌟", "🎬🩷🌼🌠", "🌸🎞️💫🎀"];
       const deco = decoraciones[Math.floor(Math.random() * decoraciones.length)];
-
       const caption = `${deco}\n*🌸 Anime Clip Aleatorio 🌸*\n${deco}\n\n🎞️ Disfruta del ritmo y la magia del anime 💫`;
 
-      // Enviar según tipo
-      if (esVideo || esGif) {
-        await sock.sendMessage(chat, {
-          video: buffer,
-          mimetype: "video/mp4",
-          caption
-        }, { quoted: msg });
+      // Si es GIF, convertir a MP4
+      if (mediaUrl.endsWith(".gif") || contentType.includes("gif")) {
+        await new Promise((resolve, reject) => {
+          exec(`ffmpeg -y -i "${tempInput}" -movflags faststart -pix_fmt yuv420p -vf scale=512:-1 "${tempOutput}"`, (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
       } else {
-        await sock.sendMessage(chat, {
-          image: buffer,
-          caption
-        }, { quoted: msg });
+        fs.renameSync(tempInput, tempOutput);
       }
+
+      const finalBuffer = fs.readFileSync(tempOutput);
+
+      await sock.sendMessage(chat, {
+        video: finalBuffer,
+        mimetype: "video/mp4",
+        caption
+      }, { quoted: msg });
+
+      // Limpieza
+      fs.unlinkSync(tempOutput);
+      if (fs.existsSync(tempInput)) fs.unlinkSync(tempInput);
 
     } catch (err) {
       console.error("⚠️ Error al enviar el clip:", err.message);
-      await sock.sendMessage(chat, { text: "⚠️ Hubo un error al enviar el clip. Intenta de nuevo." }, { quoted: msg });
+      await sock.sendMessage(chat, { text: "⚠️ Hubo un error al procesar el video. Intenta de nuevo." }, { quoted: msg });
     }
   }
 };
