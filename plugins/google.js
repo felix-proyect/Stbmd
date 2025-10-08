@@ -1,9 +1,11 @@
 import fetch from 'node-fetch';
 
+const SEARCH_API_KEY = 'yVoHmx96Dt8hJqtqyDxfRqYG'; // Tu API key de SearchAPI.io
+
 const googleCommand = {
   name: "google",
   category: "buscador",
-  description: "Realiza una búsqueda en Google usando APIs gratuitas.",
+  description: "Realiza una búsqueda en Google usando SearchAPI.io",
   aliases: ["search"],
 
   async execute({ sock, msg, args }) {
@@ -16,49 +18,39 @@ const googleCommand = {
 
     await sock.sendMessage(msg.key.remoteJid, { react: { text: '🔍', key: msg.key } });
 
-    // Intenta primero con Popcat API, si falla usa Akuari
-    const apis = [
-      `https://api.popcat.xyz/google?q=${encodeURIComponent(query)}`,
-      `https://api.akuari.my.id/search/google?q=${encodeURIComponent(query)}`
-    ];
+    try {
+      const apiUrl = `https://www.searchapi.io/api/v1/search?engine=google&q=${encodeURIComponent(query)}&api_key=${SEARCH_API_KEY}`;
+      const res = await fetch(apiUrl);
+      const json = await res.json();
 
-    let results = null;
-
-    for (let api of apis) {
-      try {
-        const res = await fetch(api);
-        const json = await res.json();
-
-        if (json && json.results && json.results.length > 0) {
-          results = json.results.map(r => ({
-            title: r.title || r.judul || "Sin título",
-            link: r.url || r.link || "",
-            desc: r.description || r.desc || ""
-          }));
-          break;
-        }
-      } catch {
-        continue;
+      // Validar respuesta
+      const results = json.organic_results;
+      if (!results || results.length === 0) {
+        await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
+        return sock.sendMessage(msg.key.remoteJid, { 
+          text: '❌ No se encontraron resultados para tu búsqueda.' 
+        }, { quoted: msg });
       }
-    }
 
-    if (!results || results.length === 0) {
+      // Formatear mensaje
+      let replyMessage = `*「 🔎 」 Resultados de Google para: "${query}"*\n\n`;
+      results.slice(0, 8).forEach((item, index) => {
+        replyMessage += `*${index + 1}. ${item.title || 'Sin título'}*\n`;
+        replyMessage += `_${item.snippet || 'Sin descripción'}_\n`;
+        replyMessage += `*Enlace:* ${item.link}\n\n`;
+      });
+
+      // Enviar resultado
+      await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
+      await sock.sendMessage(msg.key.remoteJid, { text: replyMessage.trim() }, { quoted: msg });
+
+    } catch (error) {
+      console.error('Error al usar SearchAPI.io:', error);
       await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
-      return sock.sendMessage(msg.key.remoteJid, { 
-        text: '⚠️ No se encontraron resultados o las APIs fallaron.' 
+      await sock.sendMessage(msg.key.remoteJid, { 
+        text: `⚠️ Ocurrió un error al obtener los resultados. Puede que la API esté temporalmente inactiva.` 
       }, { quoted: msg });
     }
-
-    // Construir el mensaje
-    let replyMessage = `*「 🔎 」 Resultados de Google para: "${query}"*\n\n`;
-    results.slice(0, 8).forEach((item, index) => {
-      replyMessage += `*${index + 1}. ${item.title}*\n`;
-      replyMessage += `_${item.desc || 'Sin descripción'}_\n`;
-      replyMessage += `*Enlace:* ${item.link}\n\n`;
-    });
-
-    await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
-    await sock.sendMessage(msg.key.remoteJid, { text: replyMessage.trim() }, { quoted: msg });
   }
 };
 
