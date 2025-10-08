@@ -14,7 +14,6 @@ const lidCommand = {
     const remoteJid = msg.key.remoteJid;
 
     const message = `*-- Tus Identificadores --*\n\n` +
-                    `Para que te reconozca como dueño en un grupo, necesito el siguiente ID:\n\n` +
                     `*ID de Participante (LID o JID):*\n` +
                     `\`${participantId}\`\n\n` +
                     `*ID del Chat:*\n` +
