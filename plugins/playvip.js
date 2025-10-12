@@ -121,7 +121,7 @@ const playvipCommand = {
   command: /^playvip$/i,
 
   async execute({ sock, msg, args }) {
-    const cost = 10;
+    const cost = 100;
     const usersDb = readUsersDb();
     let user = usersDb[msg.sender];
 
