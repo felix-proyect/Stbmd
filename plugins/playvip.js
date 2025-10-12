@@ -112,75 +112,81 @@ const savetube = {
   }
 };
 
-// ==================== HANDLER PRINCIPAL ==================== //
-let handler = async function playvip(m, { conn, args, usedPrefix, command }) {
-  const cost = 10;
-  let user = global.db.data.users[m.sender];
-  if (user.coin < cost) {
-    return conn.sendMessage(m.chat, { text: `🪙 *No tienes suficientes coins para usar este comando.* Necesitas ${cost} coins.` }, { quoted: m });
-  }
+const playvipCommand = {
+  name: 'playvip',
+  category: 'descargas',
+  help: ['playvip'],
+  tags: ['descargas'],
+  command: /^playvip$/i,
 
-  const query = args.join(" ").trim();
-  if (!query)
-    return conn.sendMessage(m.chat, {
-      text: `🎵 *Ingresa el nombre del audio o canción que deseas descargar.*`
-    }, { quoted: m });
-
-  await conn.sendMessage(m.chat, { react: { text: '🔎', key: m.key } });
-  await conn.sendMessage(m.chat, { text: `🔍 *Buscando en YouTube...*\n⏳ Por favor espera...` }, { quoted: m });
-
-  try {
-    // Buscar en YouTube
-    const res = await fetch(`https://delirius-apiofc.vercel.app/search/ytsearch?q=${encodeURIComponent(query)}`);
-    const json = await res.json();
-    if (!json.status || !json.data?.length)
-      return conn.sendMessage(m.chat, { text: `❌ No encontré resultados para *${query}*.` }, { quoted: m });
-
-    const vid = json.data[0];
-    await conn.sendMessage(m.chat, { react: { text: '🎧', key: m.key } });
-    await conn.sendMessage(m.chat, { text: `🎶 *Descargando:* ${vid.title}` }, { quoted: m });
-
-    // Ejecutar TODAS las APIs simultáneamente
-    const results = await Promise.allSettled(
-      fuentes.map(async f => {
-        try {
-          const r = await fetch(f.endpoint(vid.url));
-          const data = await r.json();
-          const link = f.extractor(data);
-          if (link) return link;
-        } catch { }
-        return null;
-      })
-    );
-
-    // Elegir el primer link válido
-    let dlUrl = results.find(r => r.status === 'fulfilled' && r.value)?.value;
-
-    // Si ninguna funcionó, usar SaveTube
-    if (!dlUrl) {
-      const st = await savetube.download(vid.url);
-      if (st.ok) dlUrl = st.url;
+  async execute({ conn, args, m }) {
+    const cost = 10;
+    let user = global.db.data.users[m.sender];
+    if (user.coin < cost) {
+      return conn.sendMessage(m.chat, { text: `🪙 *No tienes suficientes coins para usar este comando.* Necesitas ${cost} coins.` }, { quoted: m });
     }
 
-    if (!dlUrl)
-      return conn.sendMessage(m.chat, { text: `⚠️ *No se pudo obtener el audio, todas las APIs fallaron.*` }, { quoted: m });
+    const query = args.join(" ").trim();
+    if (!query)
+      return conn.sendMessage(m.chat, {
+        text: `🎵 *Ingresa el nombre del audio o canción que deseas descargar.*`
+      }, { quoted: m });
 
-    user.coin -= cost;
+    await conn.sendMessage(m.chat, { react: { text: '🔎', key: m.key } });
+    await conn.sendMessage(m.chat, { text: `🔍 *Buscando en YouTube...*\n⏳ Por favor espera...` }, { quoted: m });
 
-    // Miniatura
-    let thumb = null;
     try {
-      const img = await jimp.read(vid.thumbnail);
-      img.resize(300, jimp.AUTO);
-      thumb = await img.getBufferAsync(jimp.MIME_JPEG);
-    } catch { }
+      // Buscar en YouTube
+      const res = await fetch(`https://delirius-apiofc.vercel.app/search/ytsearch?q=${encodeURIComponent(query)}`);
+      const json = await res.json();
+      if (!json.status || !json.data?.length)
+        return conn.sendMessage(m.chat, { text: `❌ No encontré resultados para *${query}*.` }, { quoted: m });
 
-    // Enviar audio
-    await conn.sendMessage(m.chat, {
-      audio: { url: dlUrl },
-      mimetype: 'audio/mpeg',
-      fileName: `${vid.title}.mp3`,
-      caption: `
+      const vid = json.data[0];
+      await conn.sendMessage(m.chat, { react: { text: '🎧', key: m.key } });
+      await conn.sendMessage(m.chat, { text: `🎶 *Descargando:* ${vid.title}` }, { quoted: m });
+
+      // Ejecutar TODAS las APIs simultáneamente
+      const results = await Promise.allSettled(
+        fuentes.map(async f => {
+          try {
+            const r = await fetch(f.endpoint(vid.url));
+            const data = await r.json();
+            const link = f.extractor(data);
+            if (link) return link;
+          } catch { }
+          return null;
+        })
+      );
+
+      // Elegir el primer link válido
+      let dlUrl = results.find(r => r.status === 'fulfilled' && r.value)?.value;
+
+      // Si ninguna funcionó, usar SaveTube
+      if (!dlUrl) {
+        const st = await savetube.download(vid.url);
+        if (st.ok) dlUrl = st.url;
+      }
+
+      if (!dlUrl)
+        return conn.sendMessage(m.chat, { text: `⚠️ *No se pudo obtener el audio, todas las APIs fallaron.*` }, { quoted: m });
+
+      user.coin -= cost;
+
+      // Miniatura
+      let thumb = null;
+      try {
+        const img = await jimp.read(vid.thumbnail);
+        img.resize(300, jimp.AUTO);
+        thumb = await img.getBufferAsync(jimp.MIME_JPEG);
+      } catch { }
+
+      // Enviar audio
+      await conn.sendMessage(m.chat, {
+        audio: { url: dlUrl },
+        mimetype: 'audio/mpeg',
+        fileName: `${vid.title}.mp3`,
+        caption: `
 🎶 *${vid.title}*
 🕒 Duración: ${vid.duration}
 🎤 Canal: ${vid.author?.name || "Desconocido"}
@@ -188,19 +194,17 @@ let handler = async function playvip(m, { conn, args, usedPrefix, command }) {
 
 *Costo: -${cost} coins*
 `.trim(),
-      ...(thumb ? { jpegThumbnail: thumb } : {}),
-    }, { quoted: m });
+        ...(thumb ? { jpegThumbnail: thumb } : {}),
+      }, { quoted: m });
 
-    await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
+      await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
 
-  } catch (e) {
-    console.error(e);
-    await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
-    conn.sendMessage(m.chat, { text: `⚠️ Error: ${e.message}` }, { quoted: m });
+    } catch (e) {
+      console.error(e);
+      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
+      conn.sendMessage(m.chat, { text: `⚠️ Error: ${e.message}` }, { quoted: m });
+    }
   }
 };
 
-handler.help = ['playvip'];
-handler.tags = ['descargas'];
-handler.command = /^playvip$/i;
-export default handler;
+export default playvipCommand;
