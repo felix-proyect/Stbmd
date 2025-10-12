@@ -29,6 +29,7 @@
     "google-libphonenumber": "^3.2.43",
     "gradient-string": "^3.0.0",
     "human-readable": "^0.2.1",
+    "jimp": "^0.22.12",
     "lyrics-finder": "^21.7.0",
     "node-cache": "^5.1.2",
     "node-fetch": "^3.3.2",
