@@ -120,38 +120,38 @@ const playvipCommand = {
   tags: ['descargas'],
   command: /^playvip$/i,
 
-  async execute({ conn, args, m }) {
+  async execute({ sock, msg, args }) {
     const cost = 10;
     const usersDb = readUsersDb();
-    let user = usersDb[m.sender];
+    let user = usersDb[msg.sender];
 
     if (!user) {
-      return conn.sendMessage(m.chat, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: m });
+      return sock.sendMessage(msg.key.remoteJid, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: msg });
     }
 
     if (user.coins < cost) {
-      return conn.sendMessage(m.chat, { text: `🪙 *No tienes suficientes coins para usar este comando.* Necesitas ${cost} coins.` }, { quoted: m });
+      return sock.sendMessage(msg.key.remoteJid, { text: `🪙 *No tienes suficientes coins para usar este comando.* Necesitas ${cost} coins.` }, { quoted: msg });
     }
 
     const query = args.join(" ").trim();
     if (!query)
-      return conn.sendMessage(m.chat, {
+      return sock.sendMessage(msg.key.remoteJid, {
         text: `🎵 *Ingresa el nombre del audio o canción que deseas descargar.*`
-      }, { quoted: m });
+      }, { quoted: msg });
 
-    await conn.sendMessage(m.chat, { react: { text: '🔎', key: m.key } });
-    await conn.sendMessage(m.chat, { text: `🔍 *Buscando en YouTube...*\n⏳ Por favor espera...` }, { quoted: m });
+    await sock.sendMessage(msg.key.remoteJid, { react: { text: '🔎', key: msg.key } });
+    await sock.sendMessage(msg.key.remoteJid, { text: `🔍 *Buscando en YouTube...*\n⏳ Por favor espera...` }, { quoted: msg });
 
     try {
       // Buscar en YouTube
       const res = await fetch(`https://delirius-apiofc.vercel.app/search/ytsearch?q=${encodeURIComponent(query)}`);
       const json = await res.json();
       if (!json.status || !json.data?.length)
-        return conn.sendMessage(m.chat, { text: `❌ No encontré resultados para *${query}*.` }, { quoted: m });
+        return sock.sendMessage(msg.key.remoteJid, { text: `❌ No encontré resultados para *${query}*.` }, { quoted: msg });
 
       const vid = json.data[0];
-      await conn.sendMessage(m.chat, { react: { text: '🎧', key: m.key } });
-      await conn.sendMessage(m.chat, { text: `🎶 *Descargando:* ${vid.title}` }, { quoted: m });
+      await sock.sendMessage(msg.key.remoteJid, { react: { text: '🎧', key: msg.key } });
+      await sock.sendMessage(msg.key.remoteJid, { text: `🎶 *Descargando:* ${vid.title}` }, { quoted: msg });
 
       // Ejecutar TODAS las APIs simultáneamente
       const results = await Promise.allSettled(
@@ -176,7 +176,7 @@ const playvipCommand = {
       }
 
       if (!dlUrl)
-        return conn.sendMessage(m.chat, { text: `⚠️ *No se pudo obtener el audio, todas las APIs fallaron.*` }, { quoted: m });
+        return sock.sendMessage(msg.key.remoteJid, { text: `⚠️ *No se pudo obtener el audio, todas las APIs fallaron.*` }, { quoted: msg });
 
       user.coins -= cost;
       writeUsersDb(usersDb);
@@ -190,7 +190,7 @@ const playvipCommand = {
       } catch { }
 
       // Enviar audio
-      await conn.sendMessage(m.chat, {
+      await sock.sendMessage(msg.key.remoteJid, {
         audio: { url: dlUrl },
         mimetype: 'audio/mpeg',
         fileName: `${vid.title}.mp3`,
@@ -203,14 +203,14 @@ const playvipCommand = {
 *Costo: -${cost} coins*
 `.trim(),
         ...(thumb ? { jpegThumbnail: thumb } : {}),
-      }, { quoted: m });
+      }, { quoted: msg });
 
-      await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
+      await sock.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
 
     } catch (e) {
       console.error(e);
-      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
-      conn.sendMessage(m.chat, { text: `⚠️ Error: ${e.message}` }, { quoted: m });
+      await sock.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
+      sock.sendMessage(msg.key.remoteJid, { text: `⚠️ Error: ${e.message}` }, { quoted: msg });
     }
   }
 };
