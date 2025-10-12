@@ -180,28 +180,7 @@ let handler = async function playvip(m, { conn, args, usedPrefix, command }) {
     // Enviar audio
     await conn.sendMessage(m.chat, {
       audio: { url: dlUrl },
-      mimetype: 'audio/mpeg',
-      fileName: `${vid.title}.mp3`,
-      caption: `
-🎶 *${vid.title}*
-🕒 Duración: ${vid.duration}
-🎤 Canal: ${vid.author?.name || "Desconocido"}
-🔗 Link: ${vid.url}
-
-*Costo: -${cost} coins*
-`.trim(),
-      ...(thumb ? { jpegThumbnail: thumb } : {}),
-      contextInfo: {
-        externalAdReply: {
-          title: vid.title,
-          body: config.botName,
-          mediaUrl: vid.url,
-          sourceUrl: vid.url,
-          thumbnailUrl: vid.thumbnail,
-          mediaType: 1,
-          renderLargerThumbnail: true
-        }
-      }
+      mimetype: 'audio/mpeg'
     }, { quoted: m });
 
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
