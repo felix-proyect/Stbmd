@@ -178,7 +178,7 @@ const playvipCommand = {
       if (!dlUrl)
         return sock.sendMessage(msg.key.remoteJid, { text: `⚠️ *No se pudo obtener el audio, todas las APIs fallaron.*` }, { quoted: msg });
 
-      user.coins -= cost;
+      usersDb[msg.sender].coins -= cost;
       writeUsersDb(usersDb);
 
       // Miniatura
