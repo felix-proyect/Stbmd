@@ -1,13 +1,11 @@
 import axios from "axios";
 import fetch from "node-fetch";
 import crypto from "crypto";
-import Jimp from "jimp";
+import jimp from "jimp";
 import config from "../config.js";
 
 // ==================== TODAS LAS APIS ==================== //
 const fuentes = [
-  // 🔹 Adonix
-  { api: 'Adonix', endpoint: url => `https://apiadonix.kozow.com/download/ytmp3?apikey=${config.api.adonix.apiKey}&url=${encodeURIComponent(url)}`, extractor: res => res?.data?.url },
   // 🔹 ZenzzXD
   { api: 'ZenzzXD', endpoint: url => `https://api.zenzxz.my.id/downloader/ytmp3?url=${encodeURIComponent(url)}`, extractor: res => res?.download_url },
   { api: 'ZenzzXD v2', endpoint: url => `https://api.zenzxz.my.id/downloader/ytmp3v2?url=${encodeURIComponent(url)}`, extractor: res => res?.download_url },
@@ -172,15 +170,25 @@ let handler = async function playvip(m, { conn, args, usedPrefix, command }) {
     // Miniatura
     let thumb = null;
     try {
-      const img = await Jimp.read(vid.thumbnail);
-      img.resize(300, Jimp.AUTO);
-      thumb = await img.getBufferAsync(Jimp.MIME_JPEG);
+      const img = await jimp.read(vid.thumbnail);
+      img.resize(300, jimp.AUTO);
+      thumb = await img.getBufferAsync(jimp.MIME_JPEG);
     } catch { }
 
     // Enviar audio
     await conn.sendMessage(m.chat, {
       audio: { url: dlUrl },
-      mimetype: 'audio/mpeg'
+      mimetype: 'audio/mpeg',
+      fileName: `${vid.title}.mp3`,
+      caption: `
+🎶 *${vid.title}*
+🕒 Duración: ${vid.duration}
+🎤 Canal: ${vid.author?.name || "Desconocido"}
+🔗 Link: ${vid.url}
+
+*Costo: -${cost} coins*
+`.trim(),
+      ...(thumb ? { jpegThumbnail: thumb } : {}),
     }, { quoted: m });
 
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
