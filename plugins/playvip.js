@@ -1,7 +1,7 @@
 import axios from "axios";
 import fetch from "node-fetch";
 import crypto from "crypto";
-import jimp from "jimp";
+const jimp = (await import('jimp')).default;
 import config from "../config.js";
 
 // ==================== TODAS LAS APIS ==================== //
