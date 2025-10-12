@@ -115,7 +115,7 @@ const savetube = {
 };
 
 // ==================== HANDLER PRINCIPAL ==================== //
-let handler = async (m, { conn, args, usedPrefix, command }) => {
+let handler = async function playvip(m, { conn, args, usedPrefix, command }) {
   const cost = 10;
   let user = global.db.data.users[m.sender];
   if (user.coin < cost) {
