@@ -3,6 +3,7 @@ import fetch from "node-fetch";
 import crypto from "crypto";
 const jimp = (await import('jimp')).default;
 import config from "../config.js";
+import { readUsersDb, writeUsersDb } from '../lib/database.js';
 
 // ==================== TODAS LAS APIS ==================== //
 const fuentes = [
@@ -121,8 +122,14 @@ const playvipCommand = {
 
   async execute({ conn, args, m }) {
     const cost = 10;
-    let user = global.db.data.users[m.sender];
-    if (user.coin < cost) {
+    const usersDb = readUsersDb();
+    let user = usersDb[m.sender];
+
+    if (!user) {
+      return conn.sendMessage(m.chat, { text: "No estás registrado. Usa el comando `reg` para registrarte." }, { quoted: m });
+    }
+
+    if (user.coins < cost) {
       return conn.sendMessage(m.chat, { text: `🪙 *No tienes suficientes coins para usar este comando.* Necesitas ${cost} coins.` }, { quoted: m });
     }
 
@@ -171,7 +178,8 @@ const playvipCommand = {
       if (!dlUrl)
         return conn.sendMessage(m.chat, { text: `⚠️ *No se pudo obtener el audio, todas las APIs fallaron.*` }, { quoted: m });
 
-      user.coin -= cost;
+      user.coins -= cost;
+      writeUsersDb(usersDb);
 
       // Miniatura
       let thumb = null;
