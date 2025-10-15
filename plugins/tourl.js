@@ -17,92 +17,67 @@ try {
 
 // === FUNCIONES DE SUBIDA ===
 
-// CDNMEGA
-async function uploadToCdnmega(filePath) {
+// 🐱 Catbox
+async function uploadCatbox(buffer, ext, mime) {
   try {
-    const formData = new FormData()
-    formData.append("file", fs.createReadStream(filePath))
-
-    const response = await axios.post("https://cdnmega.vercel.app/upload", formData, {
-      headers: { ...formData.getHeaders() }
-    })
-
-    const result = response.data
-    return result.success ? result.files[0]?.url : null
-  } catch (e) {
+    const form = new FormData()
+    form.append('reqtype', 'fileupload')
+    const name = crypto.randomBytes(6).toString('hex')
+    form.append('fileToUpload', new Blob([buffer], { type: mime }), `${name}.${ext}`)
+    const res = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: form })
+    const url = (await res.text()).trim()
+    return url.startsWith('http') ? url : null
+  } catch {
     return null
   }
 }
 
-// CATBOX
-async function uploadCatbox(buffer, ext, mime) {
-  const form = new FormData()
-  form.append('reqtype', 'fileupload')
-  const randomBytes = crypto.randomBytes(5).toString('hex')
-  form.append('fileToUpload', new Blob([buffer], { type: mime || 'application/octet-stream' }), `${randomBytes}.${ext || 'bin'}`)
-  const res = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: form })
-  return (await res.text()).trim()
+// 📁 File.io
+async function uploadFileIo(buffer, ext, mime) {
+  try {
+    const form = new FormData()
+    const name = `upload.${ext}`
+    form.append('file', new Blob([buffer], { type: mime }), name)
+    const res = await fetch('https://file.io', { method: 'POST', body: form })
+    const json = await res.json()
+    return json.success ? json.link : null
+  } catch {
+    return null
+  }
 }
 
-// POSTIMAGES
-async function uploadPostImages(buffer, ext, mime) {
-  const form = new FormData()
-  form.append('optsize', '0')
-  form.append('expire', '0')
-  form.append('numfiles', '1')
-  form.append('upload_session', String(Math.random()))
-  form.append('file', new Blob([buffer], { type: mime || 'image/jpeg' }), `${Date.now()}.${ext || 'jpg'}`)
-  const res = await fetch('https://postimages.org/json/rr', { method: 'POST', body: form })
-  const json = await res.json().catch(async () => ({ raw: await res.text() }))
-  return json?.url || json?.images?.[0]?.url || null
+// 💨 Uguu.se
+async function uploadUguu(buffer, ext, mime) {
+  try {
+    const form = new FormData()
+    const name = `upload.${ext}`
+    form.append('file', new Blob([buffer], { type: mime }), name)
+    const res = await fetch('https://uguu.se/upload.php', { method: 'POST', body: form })
+    const json = await res.json()
+    return json.files?.[0]?.url || null
+  } catch {
+    return null
+  }
 }
 
-// LITTERBOX
-async function uploadLitterbox(buffer, ext, mime) {
-  const form = new FormData()
-  form.append('file', new Blob([buffer], { type: mime || 'application/octet-stream' }), `upload.${ext || 'bin'}`)
-  form.append('time', '24h')
-  const res = await fetch('https://api.alvianuxio.eu.org/uploader/litterbox', { method: 'POST', body: form })
-  const text = await res.text()
-  try { const j = JSON.parse(text); return j.url || j.data?.url || null } catch { return /https?:\/\/[\w./-]+/i.test(text) ? text.trim() : null }
-}
-
-// TMPFILES
-async function uploadTmpFiles(buffer, ext, mime) {
-  const form = new FormData()
-  form.append('file', new Blob([buffer], { type: mime || 'application/octet-stream' }), `upload.${ext || 'bin'}`)
-  const res = await fetch('https://api.alvianuxio.eu.org/uploader/tmpfiles', { method: 'POST', body: form })
-  const text = await res.text()
-  try { const j = JSON.parse(text); return j.url || j.data?.url || j.link || null } catch { return /https?:\/\/[\w./-]+/i.test(text) ? text.trim() : null }
-}
-
-// FREEIMAGEHOST
-async function uploadFreeImageHost(buffer, ext, mime) {
-  const form = new FormData()
-  form.append('key', '6d207e02198a847aa98d0a2a901485a5')
-  form.append('action', 'upload')
-  form.append('source', new Blob([buffer], { type: mime || 'image/jpeg' }), `upload.${ext || 'jpg'}`)
-  const res = await fetch('https://freeimage.host/api/1/upload', { method: 'POST', body: form })
-  const j = await res.json().catch(async () => ({ raw: await res.text() }))
-  return j?.image?.url || j?.data?.image?.url || null
-}
-
-// === SUBIR A VARIOS SERVICIOS Y DEVOLVER EL PRIMERO ===
-async function uploadToAny(buffer, filePath, ext, mime) {
+// === FUNCION PRINCIPAL DE SUBIDA ===
+async function uploadToAny(buffer, ext, mime) {
   const services = [
-    async () => await uploadToCdnmega(filePath),
-    async () => await uploadCatbox(buffer, ext, mime),
-    async () => await uploadPostImages(buffer, ext, mime),
-    async () => await uploadLitterbox(buffer, ext, mime),
-    async () => await uploadTmpFiles(buffer, ext, mime),
-    async () => await uploadFreeImageHost(buffer, ext, mime)
+    { fn: uploadCatbox, name: "Catbox" },
+    { fn: uploadFileIo, name: "File.io" },
+    { fn: uploadUguu, name: "Uguu.se" }
   ]
 
-  for (const upload of services) {
+  for (const s of services) {
     try {
-      const url = await upload()
-      if (url && url.startsWith('http')) return url
-    } catch {}
+      const url = await s.fn(buffer, ext, mime)
+      if (url && url.startsWith('http')) {
+        console.log(`[tourl] ✅ Subido correctamente en: ${s.name} → ${url}`)
+        return url
+      }
+    } catch (e) {
+      console.log(`[tourl] ❌ Falló en ${s.name}:`, e.message)
+    }
   }
 
   return null
@@ -131,7 +106,7 @@ const tourlCommand = {
       return sock.sendMessage(from, { text: "El mensaje citado no contiene un archivo válido." }, { quoted: msg })
     }
 
-    const waitingMsg = await sock.sendMessage(from, { text: "📤 Subiendo archivo a múltiples servidores..." }, { quoted: msg })
+    const waitingMsg = await sock.sendMessage(from, { text: "📤 Subiendo archivo..." }, { quoted: msg })
     let tempFilePath = ''
 
     try {
@@ -152,10 +127,10 @@ const tourlCommand = {
         if (typeInfo?.mime) mime = typeInfo.mime
       } catch {}
 
-      const url = await uploadToAny(buffer, tempFilePath, ext, mime)
+      const url = await uploadToAny(buffer, ext, mime)
       if (!url) throw new Error("No se pudo subir el archivo a ningún servidor.")
 
-      const caption = `✅ *Archivo Subido Exitosamente*\n\n📎 *URL:* ${url}`
+      const caption = `✅ *Archivo Subido Exitosamente*\n\n🌐 *URL:* ${url}`
       await sock.sendMessage(from, { text: caption }, { quoted: msg, edit: waitingMsg.key })
 
     } catch (e) {
