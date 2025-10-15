@@ -1,78 +1,34 @@
 import { readSettingsDb } from '../lib/database.js'
 
-// 🔱 Mapa de emojis para las categorías temático de Gura
+// 🔱 Mapa de emojis de categorías
 const categoryEmojis = {
-  'rpg': '⚔️',
-  'general': '🔱',
-  'descargas': '🌊',
-  'diversion': '🐟',
-  'juegos': '🎮',
-  'grupos': '👥',
-  'propietario': '👑',
-  'herramientas': '🛠️',
-  'informacion': '📚',
-  'sub-bots': '🤖',
-  'ia': '🧠',
-  'otros': '⚙️',
-  'anime': '🌸',
-  'musica': '🎧',
-  'nsfw': '🚫',
-  'economia': '💰',
-  'stickers': '🎨',
-  'moderacion': '🛡️',
-  'configuracion': '⚙️',
-  'utilidades': '📦',
-  'busquedas': '🔍',
-  'premium': '💎',
-  'fun': '😜',
-  'texto': '✍️',
-  'redes': '🌐',
-  'descargas2': '📥',
-  'media': '🖼️',
-  'administracion': '🧭',
-  'seguridad': '🧩',
-  'noticias': '🗞️',
-  'bot': '🤖',
-  'otros2': '🌀'
+  'rpg': '⚔️', 'general': '🔱', 'descargas': '🌊', 'diversion': '🐟', 'juegos': '🎮',
+  'grupos': '👥', 'propietario': '👑', 'herramientas': '🛠️', 'informacion': '📚',
+  'sub-bots': '🤖', 'ia': '🧠', 'otros': '⚙️', 'anime': '🌸', 'musica': '🎧',
+  'nsfw': '🚫', 'economia': '💰', 'stickers': '🎨', 'moderacion': '🛡️',
+  'configuracion': '⚙️', 'utilidades': '📦', 'busquedas': '🔍', 'premium': '💎',
+  'fun': '😜', 'texto': '✍️', 'redes': '🌐', 'descargas2': '📥', 'media': '🖼️',
+  'administracion': '🧭', 'seguridad': '🧩', 'noticias': '🗞️', 'bot': '🤖', 'otros2': '🌀'
 }
 
-// 🌊 Estilos de bordes temáticos de Gura (35 en total)
+// 🌊 Bordes decorativos
 const borders = [
   { top: "╭─≈「", mid: "│", bot: "╰≈───≈───≈───≈╯" },
-  { top: "╔═▷", mid: "║", bot: "╚═════════════▷" },
   { top: "┌─🦈", mid: "│", bot: "└───────────🦈" },
-  { top: "╭┈➤", mid: "│", bot: "╰───────────➤" },
-  { top: "┏~～", mid: "┃", bot: "┗~～~～~～~～~～┛" },
-  { top: "✦━─┄", mid: "┃", bot: "┗━━━━━━✦" },
   { top: "╭🌊", mid: "┃", bot: "╰🌊────────🌊" },
-  { top: "┎━━💫", mid: "┃", bot: "┖━━━━━━💫" },
   { top: "╒═🫧", mid: "│", bot: "╘════════🫧" },
   { top: "┏━━🌸", mid: "┃", bot: "┗━━━━━━━━🌸" },
-  { top: "╭⚓", mid: "│", bot: "╰⚓──────────" },
   { top: "╭══💙", mid: "║", bot: "╰════════💙" },
   { top: "╒═⚔️", mid: "│", bot: "╘═════════⚔️" },
-  { top: "┌─🎐", mid: "│", bot: "└────────🎐" },
   { top: "┏━🩵", mid: "┃", bot: "┗━━━━━━━━🩵" },
   { top: "╔═🌙", mid: "║", bot: "╚═════════🌙" },
-  { top: "╭──🌊", mid: "│", bot: "╰───────🌊" },
-  { top: "┎━━✨", mid: "┃", bot: "┖━━━━━━✨" },
-  { top: "╭~💫", mid: "│", bot: "╰~💫~~~~~~~~" },
-  { top: "┏★", mid: "┃", bot: "┗★━━━━━━━" },
-  { top: "╔══🌊", mid: "║", bot: "╚════════🌊" },
-  { top: "┏💎", mid: "┃", bot: "┗💎━━━━━━" },
-  { top: "╭🎮", mid: "│", bot: "╰────────🎮" },
-  { top: "┎━━📚", mid: "┃", bot: "┖━━━━━━📚" },
-  { top: "╭⚙️", mid: "│", bot: "╰⚙️────────" },
-  { top: "╒═🧠", mid: "│", bot: "╘════════🧠" },
-  { top: "┏━👑", mid: "┃", bot: "┗━━━━━━👑" },
-  { top: "╭🌐", mid: "│", bot: "╰────────🌐" },
-  { top: "╔═💫", mid: "║", bot: "╚════════💫" },
-  { top: "┏🌸", mid: "┃", bot: "┗🌸━━━━━━" },
-  { top: "╭🧭", mid: "│", bot: "╰────────🧭" },
-  { top: "┏✨", mid: "┃", bot: "┗━━━━━━✨" },
-  { top: "╔═🦈", mid: "║", bot: "╚════════🦈" },
-  { top: "╭─💎", mid: "│", bot: "╰────────💎" },
-  { top: "┏━🌊", mid: "┃", bot: "┗━━━━━━🌊" }
+  { top: "╭──🌊", mid: "│", bot: "╰───────🌊" }
+]
+
+// 🎬 URLs de los videos disponibles
+const videos = [
+  'https://github.com/Andresv27728/dtbs/raw/main/xzadonix_49.mp4',
+  'https://files.catbox.moe/ia78ce.mp4'
 ]
 
 const menuCommand = {
@@ -86,15 +42,14 @@ const menuCommand = {
     const senderName = msg.pushName || 'Chumbie'
     const from = msg.key.remoteJid
 
-    // --- Verificación de RPG activado ---
     const settings = readSettingsDb()
     const groupSettings = settings[from] || {}
     const isRpgDisabled = from.endsWith('@g.us') && groupSettings.rpgEnabled === false
 
-    // 🔀 Elegir un estilo aleatorio
+    // 🩵 Borde aleatorio
     const border = borders[Math.floor(Math.random() * borders.length)]
 
-    // Agrupar comandos por categoría
+    // Agrupar comandos
     commands.forEach(command => {
       if (!command.category || command.name === 'test') return
       if (isRpgDisabled && command.category === 'rpg') return
@@ -103,10 +58,9 @@ const menuCommand = {
       categories[category].push(command)
     })
 
-    // Ordenar categorías
     const sortedCategories = Object.keys(categories).sort()
 
-    // 🔱 --- Construcción del menú ---
+    // 💬 Construir el texto del menú
     let menuText = `${border.top} *GURA BOT* 🔱』\n`
     menuText += `${border.mid} Hey, *${senderName}*!\n`
     menuText += `${border.mid} Bot: *${config.botName}*\n`
@@ -128,17 +82,28 @@ const menuCommand = {
     menuText += `${border.mid} Sumérgete con Gura en las olas del código.\n`
     menuText += `${border.bot}`
 
-    // 🎬 Enviar video decorativo
-    await sock.sendMessage(
-      msg.key.remoteJid,
-      {
-        video: { url: 'https://files.catbox.moe/ia78ce.mp4' },
+    // 🎞️ Elegir un video aleatorio
+    const chosen = Math.floor(Math.random() * videos.length)
+    const primaryVideo = videos[chosen]
+    const backupVideo = videos[1 - chosen] // el otro video
+
+    // 🔁 Intentar enviar video principal, y si falla, usar respaldo
+    try {
+      await sock.sendMessage(from, {
+        video: { url: primaryVideo },
         caption: menuText,
         mimetype: 'video/mp4',
         gifPlayback: false
-      },
-      { quoted: msg }
-    )
+      }, { quoted: msg })
+    } catch (err) {
+      console.error('⚠️ Error enviando video principal:', err)
+      await sock.sendMessage(from, {
+        video: { url: backupVideo },
+        caption: menuText,
+        mimetype: 'video/mp4',
+        gifPlayback: false
+      }, { quoted: msg })
+    }
   }
 }
 
