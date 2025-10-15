@@ -5,7 +5,8 @@ import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import fetch, { Blob } from 'node-fetch'
-import { fileTypeFromBuffer } from 'file-type'
+import pkg from 'file-type'
+const { fileTypeFromBuffer } = pkg
 
 // === FUNCIONES DE SUBIDA ===
 
