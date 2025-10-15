@@ -5,8 +5,15 @@ import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import fetch, { Blob } from 'node-fetch'
-import pkg from 'file-type'
-const { fileTypeFromBuffer } = pkg
+
+// === FIX file-type ===
+let fileTypeFromBuffer
+try {
+  const fileType = await import('file-type')
+  fileTypeFromBuffer = fileType.fileTypeFromBuffer || fileType.default?.fileTypeFromBuffer
+} catch {
+  fileTypeFromBuffer = async () => null
+}
 
 // === FUNCIONES DE SUBIDA ===
 
@@ -138,9 +145,13 @@ const tourlCommand = {
       tempFilePath = path.join(tempDir, `${Date.now()}.${extension}`)
       fs.writeFileSync(tempFilePath, buffer)
 
-      const { ext, mime } = (await fileTypeFromBuffer(buffer)) || { ext: extension, mime: mediaMessage.mimetype }
+      let { ext, mime } = { ext: extension, mime: mediaMessage.mimetype }
+      try {
+        const typeInfo = await fileTypeFromBuffer(buffer)
+        if (typeInfo?.ext) ext = typeInfo.ext
+        if (typeInfo?.mime) mime = typeInfo.mime
+      } catch {}
 
-      // Subir al primer servicio disponible
       const url = await uploadToAny(buffer, tempFilePath, ext, mime)
       if (!url) throw new Error("No se pudo subir el archivo a ningún servidor.")
 
