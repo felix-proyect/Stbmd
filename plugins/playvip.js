@@ -121,7 +121,7 @@ const playvipCommand = {
   command: /^playvip$/i,
 
   async execute({ sock, msg, args }) {
-    const cost = 100;
+    const cost = 10;
     const usersDb = readUsersDb();
     let user = usersDb[msg.sender];
 
@@ -178,7 +178,7 @@ const playvipCommand = {
       if (!dlUrl)
         return sock.sendMessage(msg.key.remoteJid, { text: `⚠️ *No se pudo obtener el audio, todas las APIs fallaron.*` }, { quoted: msg });
 
-      usersDb[msg.sender].coins -= cost;
+      user.coins -= cost;
       writeUsersDb(usersDb);
 
       // Miniatura
