@@ -19,7 +19,8 @@ const tiktoksearchCommand = {
     description: 'Busca videos en TikTok y los muestra en un carrusel.',
     aliases: ['tiktoks'],
 
-    async execute({ sock, msg, text }) {
+    async execute({ sock, msg, args }) {
+        const text = args.join(' ');
         if (!text) return sock.sendMessage(msg.key.remoteJid, { text: '☁️ *¿Que quieres buscar en TikTok?*' }, { quoted: msg });
 
         try {
