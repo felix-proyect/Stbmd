@@ -1,33 +1,35 @@
 import axios from "axios";
 import https from "https";
-import baileys from "@whiskeysockets/baileys";
-
-const { delay } = baileys;
 
 // 🔒 Ignorar certificados SSL inválidos
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 
-// --- 🖼️ Helper para enviar imágenes como "álbum" (simulado) ---
+// 🕒 Delay manual (reemplaza a baileys.delay)
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// --- 🖼️ Helper para enviar imágenes como “álbum simulado” ---
 async function sendAlbum(sock, jid, medias, options = {}) {
   const caption = options.caption || "";
-  const delayTime = options.delay || 500;
+  const delayTime = options.delay || 800;
   const quoted = options.quoted;
 
   for (let i = 0; i < medias.length; i++) {
     const mediaUrl = medias[i];
     const message = {
       image: { url: mediaUrl },
-      caption: i === 0 ? caption : undefined, // solo el primero lleva caption
+      caption: i === 0 ? caption : undefined, // solo la primera lleva texto
     };
 
     await sock.sendMessage(jid, message, { quoted });
-    await delay(delayTime);
+    await sleep(delayTime); // ⏳ Espera antes del siguiente mensaje
   }
 }
 
-// --- 📌 Comando Pinterest corregido y compatible ---
+// --- 📌 Comando Pinterest funcional y estable ---
 const pinterestCommand = {
   name: "pinterest",
   category: "descargas",
@@ -71,19 +73,20 @@ const pinterestCommand = {
         { quoted: msg }
       );
 
-      // 🔸 Si solo hay una imagen, mándala normal
-      if (imageUrls.length === 1) {
+      // Limitar a máximo 10 imágenes (opcional)
+      const limitedImages = imageUrls.slice(0, 10);
+
+      if (limitedImages.length === 1) {
         await sock.sendMessage(
           msg.key.remoteJid,
           {
-            image: { url: imageUrls[0] },
+            image: { url: limitedImages[0] },
             caption: `*📌 Resultado para:* ${text}\n🔗 *Fuente:* Adonix`,
           },
           { quoted: msg }
         );
       } else {
-        // 🔸 Enviar varias como álbum simulado
-        await sendAlbum(sock, msg.key.remoteJid, imageUrls, {
+        await sendAlbum(sock, msg.key.remoteJid, limitedImages, {
           caption: `*📌 Resultados de:* ${text}\n🔗 *Fuente:* Adonix`,
           quoted: msg,
         });
