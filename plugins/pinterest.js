@@ -4,25 +4,26 @@ import baileys from "@whiskeysockets/baileys";
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-// 🕒 delay manual
+// 🕒 delay helper
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 🖼️ Enviar imágenes como “galería real”
+// 🖼️ Enviar imágenes como carrusel / galería
 async function sendGallery(sock, jid, medias, options = {}) {
   const caption = options.caption || "";
   const quoted = options.quoted;
 
-  const items = [];
+  const cards = [];
 
-  // Primero, subimos todas las imágenes al servidor de WhatsApp
   for (let i = 0; i < medias.length; i++) {
     const url = medias[i];
-    const upload = await baileys.prepareWAMessageMedia(
+
+    // Usar sock.prepareMessageMedia (la versión correcta)
+    const upload = await sock.prepareMessageMedia(
       { image: { url } },
       { upload: sock.waUploadToServer }
     );
 
-    items.push({
+    cards.push({
       body: { text: i === 0 ? caption : "" },
       header: { hasMediaAttachment: true, ...upload },
     });
@@ -31,15 +32,9 @@ async function sendGallery(sock, jid, medias, options = {}) {
   const galleryMessage = {
     message: {
       interactiveMessage: {
-        header: {
-          title: "Resultados de Pinterest 🖼️",
-        },
-        body: {
-          text: caption,
-        },
-        carouselMessage: {
-          cards: items,
-        },
+        header: { title: "Resultados de Pinterest 🖼️" },
+        body: { text: caption },
+        carouselMessage: { cards },
       },
     },
   };
@@ -53,7 +48,7 @@ async function sendGallery(sock, jid, medias, options = {}) {
 const pinterestCommand = {
   name: "pinterest",
   category: "descargas",
-  description: "Busca y muestra imágenes tipo galería de Pinterest.",
+  description: "Busca imágenes en Pinterest y las muestra en galería.",
   aliases: ["pin"],
 
   async execute({ sock, msg, args, usedPrefix, command }) {
@@ -62,7 +57,7 @@ const pinterestCommand = {
       return sock.sendMessage(
         msg.key.remoteJid,
         {
-          text: `*📌 Uso correcto:*\n${usedPrefix + command} Gura\n\nEjemplo:\n${usedPrefix + command} gatos`,
+          text: `📌 *Uso correcto:*\n${usedPrefix + command} <búsqueda>\n\nEjemplo:\n${usedPrefix + command} gatos`,
         },
         { quoted: msg }
       );
@@ -73,7 +68,6 @@ const pinterestCommand = {
     });
 
     try {
-      // API de Adonix
       const apiUrl = `https://api-adonix.ultraplus.click/search/pinterest?apikey=gawrgurabot&q=${encodeURIComponent(
         text
       )}`;
