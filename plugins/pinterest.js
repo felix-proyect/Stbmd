@@ -1,39 +1,59 @@
 import axios from "axios";
 import https from "https";
+import baileys from "@whiskeysockets/baileys";
 
-// 🔒 Ignorar certificados SSL inválidos
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-// 🕒 Delay manual (reemplaza a baileys.delay)
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// 🕒 delay manual
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// --- 🖼️ Helper para enviar imágenes como “álbum simulado” ---
-async function sendAlbum(sock, jid, medias, options = {}) {
+// 🖼️ Enviar imágenes como “galería real”
+async function sendGallery(sock, jid, medias, options = {}) {
   const caption = options.caption || "";
-  const delayTime = options.delay || 800;
   const quoted = options.quoted;
 
-  for (let i = 0; i < medias.length; i++) {
-    const mediaUrl = medias[i];
-    const message = {
-      image: { url: mediaUrl },
-      caption: i === 0 ? caption : undefined, // solo la primera lleva texto
-    };
+  const items = [];
 
-    await sock.sendMessage(jid, message, { quoted });
-    await sleep(delayTime); // ⏳ Espera antes del siguiente mensaje
+  // Primero, subimos todas las imágenes al servidor de WhatsApp
+  for (let i = 0; i < medias.length; i++) {
+    const url = medias[i];
+    const upload = await baileys.prepareWAMessageMedia(
+      { image: { url } },
+      { upload: sock.waUploadToServer }
+    );
+
+    items.push({
+      body: { text: i === 0 ? caption : "" },
+      header: { hasMediaAttachment: true, ...upload },
+    });
   }
+
+  const galleryMessage = {
+    message: {
+      interactiveMessage: {
+        header: {
+          title: "Resultados de Pinterest 🖼️",
+        },
+        body: {
+          text: caption,
+        },
+        carouselMessage: {
+          cards: items,
+        },
+      },
+    },
+  };
+
+  await sock.relayMessage(jid, galleryMessage.message, {
+    messageId: baileys.generateMessageID(),
+  });
 }
 
-// --- 📌 Comando Pinterest funcional y estable ---
+// 📌 Comando Pinterest
 const pinterestCommand = {
   name: "pinterest",
   category: "descargas",
-  description: "Busca y descarga imágenes de Pinterest.",
+  description: "Busca y muestra imágenes tipo galería de Pinterest.",
   aliases: ["pin"],
 
   async execute({ sock, msg, args, usedPrefix, command }) {
@@ -53,7 +73,7 @@ const pinterestCommand = {
     });
 
     try {
-      // 🔹 API de Adonix
+      // API de Adonix
       const apiUrl = `https://api-adonix.ultraplus.click/search/pinterest?apikey=gawrgurabot&q=${encodeURIComponent(
         text
       )}`;
@@ -63,40 +83,18 @@ const pinterestCommand = {
         throw new Error("No se encontraron imágenes para esa búsqueda.");
       }
 
-      const imageUrls = data.results;
+      const imageUrls = data.results.slice(0, 10);
 
-      await sock.sendMessage(
-        msg.key.remoteJid,
-        {
-          text: `🖼️ Encontré *${imageUrls.length}* imágenes para *${text}*.\nEnviando resultados...`,
-        },
-        { quoted: msg }
-      );
-
-      // Limitar a máximo 10 imágenes (opcional)
-      const limitedImages = imageUrls.slice(0, 10);
-
-      if (limitedImages.length === 1) {
-        await sock.sendMessage(
-          msg.key.remoteJid,
-          {
-            image: { url: limitedImages[0] },
-            caption: `*📌 Resultado para:* ${text}\n🔗 *Fuente:* Adonix`,
-          },
-          { quoted: msg }
-        );
-      } else {
-        await sendAlbum(sock, msg.key.remoteJid, limitedImages, {
-          caption: `*📌 Resultados de:* ${text}\n🔗 *Fuente:* Adonix`,
-          quoted: msg,
-        });
-      }
+      await sendGallery(sock, msg.key.remoteJid, imageUrls, {
+        caption: `📌 Resultados de *${text}*`,
+        quoted: msg,
+      });
 
       await sock.sendMessage(msg.key.remoteJid, {
         react: { text: "✅", key: msg.key },
       });
     } catch (error) {
-      console.error("Error en el comando Pinterest:", error);
+      console.error("Error en Pinterest:", error);
       await sock.sendMessage(msg.key.remoteJid, {
         react: { text: "❌", key: msg.key },
       });
