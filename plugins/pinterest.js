@@ -2,7 +2,7 @@ import axios from 'axios';
 import https from 'https';
 import baileys from '@whiskeysockets/baileys';
 
-// 🔒 Ignorar certificados SSL inválidos (útil en entornos sin CA)
+// 🔒 Ignorar certificados SSL inválidos
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
@@ -55,18 +55,21 @@ async function sendAlbum(sock, jid, medias, options = {}) {
   return albumMessage;
 }
 
-// --- 📌 Comando Pinterest actualizado ---
+// --- 📌 Comando Pinterest actualizado y corregido ---
 const pinterestCommand = {
   name: "pinterest",
   category: "descargas",
   description: "Busca y descarga todas las imágenes encontradas en Pinterest.",
   aliases: ["pin"],
 
-  async execute({ sock, msg, text, usedPrefix, command }) {
+  async execute({ sock, msg, args, usedPrefix, command }) {
+    const text = args?.join(" ").trim();
     if (!text) {
       return sock.sendMessage(
         msg.key.remoteJid,
-        { text: `*📌 Uso Correcto:*\n*${usedPrefix + command}* Gura` },
+        {
+          text: `*📌 Uso correcto:*\n${usedPrefix + command} Gura\n\nEjemplo:\n${usedPrefix + command} gatos`,
+        },
         { quoted: msg }
       );
     }
@@ -76,7 +79,7 @@ const pinterestCommand = {
     });
 
     try {
-      // 🔹 Nueva API de Adonix
+      // 🔹 API de Adonix
       const apiUrl = `https://api-adonix.ultraplus.click/search/pinterest?apikey=gawrgurabot&q=${encodeURIComponent(text)}`;
       const { data } = await axios.get(apiUrl, { httpsAgent });
 
@@ -88,7 +91,9 @@ const pinterestCommand = {
 
       await sock.sendMessage(
         msg.key.remoteJid,
-        { text: `🖼️ Encontré *${imageUrls.length}* imágenes para *${text}*.\nEnviando álbum...` },
+        {
+          text: `🖼️ Encontré *${imageUrls.length}* imágenes para *${text}*.\nEnviando álbum...`,
+        },
         { quoted: msg }
       );
 
@@ -97,7 +102,7 @@ const pinterestCommand = {
           msg.key.remoteJid,
           {
             image: { url: imageUrls[0] },
-            caption: `*📌 Resultado para:* ${text}\n\n🔗 *Fuente:* Adonix`,
+            caption: `*📌 Resultado para:* ${text}\n🔗 *Fuente:* Adonix`,
           },
           { quoted: msg }
         );
@@ -119,7 +124,7 @@ const pinterestCommand = {
       await sock.sendMessage(
         msg.key.remoteJid,
         {
-          text: `Ocurrió un error al buscar en Pinterest.\n\n*Error:* ${error.message}`,
+          text: `❌ Ocurrió un error al buscar en Pinterest.\n\n*Error:* ${error.message}`,
         },
         { quoted: msg }
       );
