@@ -81,7 +81,8 @@ for (let i = 0; i < 130; i++) {
 
 // 🎬 URLs de los videos disponibles
 const videos = [
-  'https://github.com/Andresv27728/dtbs/blob/main/SSYouTube.online_blue%20horizon!!%20-%20Gawr%20Gura_1080p.mp4',
+  'const videos = [
+  'https://raw.githubusercontent.com/Andresv27728/dtbs/main/SSYouTube.online_blue%20horizon!!%20-%20Gawr%20Gura_1080p.mp4',
   'https://files.catbox.moe/ia78ce.mp4'
 ]
 
