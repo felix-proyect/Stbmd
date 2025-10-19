@@ -1,108 +1,139 @@
 import { readSettingsDb } from '../lib/database.js'
 
-// 🔱 Mapa de emojis de categorías
-const categoryEmojis = {
-  'rpg': '⚔️', 'general': '🔱', 'descargas': '🌊', 'diversion': '🐟', 'juegos': '🎮',
-  'grupos': '👥', 'propietario': '👑', 'herramientas': '🛠️', 'informacion': '📚',
-  'sub-bots': '🤖', 'ia': '🧠', 'otros': '⚙️', 'anime': '🌸', 'musica': '🎧',
-  'nsfw': '🚫', 'economia': '💰', 'stickers': '🎨', 'moderacion': '🛡️',
-  'configuracion': '⚙️', 'utilidades': '📦', 'busquedas': '🔍', 'premium': '💎',
-  'fun': '😜', 'texto': '✍️', 'redes': '🌐', 'descargas2': '📥', 'media': '🖼️',
-  'administracion': '🧭', 'seguridad': '🧩', 'noticias': '🗞️', 'bot': '🤖', 'otros2': '🌀'
+// 🔱 Mapa de emojis de categorías base
+const baseCategoryEmojis = {
+  'rpg': ['⚔️', '🛡️', '🏹', '🗡️', '🐉', '⚒️'],
+  'general': ['🔱', '🌊', '🦈', '🐚', '🪸'],
+  'descargas': ['📥', '💾', '🌀', '📦', '🌐'],
+  'diversion': ['🐟', '🤣', '🎉', '🎊', '🫧'],
+  'juegos': ['🎮', '🕹️', '👾', '🏆', '💥'],
+  'grupos': ['👥', '🗣️', '💬', '📢', '👑'],
+  'propietario': ['👑', '💼', '🌟', '⚡', '🪙'],
+  'herramientas': ['🛠️', '🔧', '⚙️', '🪛', '🔩'],
+  'informacion': ['📚', '🧭', '📖', '💡', '🧠'],
+  'sub-bots': ['🤖', '🧩', '⚙️', '💠', '🪄'],
+  'ia': ['🧠', '🤖', '💫', '🌐', '🌀'],
+  'anime': ['🌸', '🍥', '🩷', '💫', '✨'],
+  'musica': ['🎧', '🎵', '🎶', '🎤', '💿'],
+  'economia': ['💰', '💸', '🏦', '🪙', '📈'],
+  'moderacion': ['🛡️', '🚨', '⚔️', '📛', '🔰'],
+  'premium': ['💎', '🌟', '👑', '✨', '💠'],
+  'stickers': ['🎨', '🖌️', '🌈', '💫', '🩵'],
+  'bot': ['🤖', '💠', '🔮', '🪩', '🌐']
 }
 
-// 🌊 Bordes decorativos
+// 💎 Más de 150 decoraciones randomizadas
 const borders = [
-  { top: "╭─≈「", mid: "│", bot: "╰≈───≈───≈───≈╯" },
-  { top: "┌─🦈", mid: "│", bot: "└───────────🦈" },
-  { top: "╭🌊", mid: "┃", bot: "╰🌊────────🌊" },
-  { top: "╒═🫧", mid: "│", bot: "╘════════🫧" },
-  { top: "┏━━🌸", mid: "┃", bot: "┗━━━━━━━━🌸" },
-  { top: "╭══💙", mid: "║", bot: "╰════════💙" },
-  { top: "╒═⚔️", mid: "│", bot: "╘═════════⚔️" },
-  { top: "┏━🩵", mid: "┃", bot: "┗━━━━━━━━🩵" },
-  { top: "╔═🌙", mid: "║", bot: "╚═════════🌙" },
-  { top: "╭──🌊", mid: "│", bot: "╰───────🌊" }
+  // Estilo oceánico 🌊
+  { top: "╭──🌊──╮", mid: "│", bot: "╰──🌊──╯" },
+  { top: "┌🌊⋆｡˚🫧˚｡⋆🌊┐", mid: "┃", bot: "└🌊⋆｡˚🫧˚｡⋆🌊┘" },
+  { top: "╒═🌊═╕", mid: "║", bot: "╘═🌊═╛" },
+  { top: "╭═🫧═══🌊═══🫧═╮", mid: "┃", bot: "╰═🫧═══🌊═══🫧═╯" },
+  { top: "┏━━━🦈━━━┓", mid: "┃", bot: "┗━━━🦈━━━┛" },
+
+  // Estilo cute 💖
+  { top: "♡⋆｡˚💙˚｡⋆♡", mid: "♡", bot: "♡⋆｡˚💙˚｡⋆♡" },
+  { top: "╭♡❀🐚❀♡╮", mid: "│", bot: "╰♡❀🐚❀♡╯" },
+  { top: "♡🌸✿🌷🌸♡", mid: "│", bot: "♡🌸✿🌷🌸♡" },
+  { top: "✧･ﾟ: *✧･ﾟ:*💫*:･ﾟ✧*:･ﾟ✧", mid: "│", bot: "✧･ﾟ: *✧･ﾟ:*💫*:･ﾟ✧*:･ﾟ✧" },
+
+  // Estilo gamer 🎮
+  { top: "╭🎮⚡", mid: "│", bot: "╰⚡🎮" },
+  { top: "┌👾 GAME 👾┐", mid: "│", bot: "└👾 GAME 👾┘" },
+  { top: "╒═💥═╕", mid: "│", bot: "╘═💥═╛" },
+  { top: "╭🕹️═══🎮═══🕹️╮", mid: "┃", bot: "╰🕹️═══🎮═══🕹️╯" },
+
+  // Estilo Gura 🦈 (temático)
+  { top: "╭═══『GURA🌊』═══╮", mid: "│", bot: "╰═══『🦈』═══╯" },
+  { top: "┌─🦈ATLANTIS🫧─┐", mid: "│", bot: "└─🌊SEA SYSTEM─┘" },
+  { top: "╭🫧✨🌊✨🫧╮", mid: "┃", bot: "╰🫧✨🌊✨🫧╯" },
+  { top: "╒═🌊💙GURA💙🌊═╕", mid: "│", bot: "╘═🌊💙GURA💙🌊═╛" },
+
+  // Estilo japonés 🗾
+  { top: "╭─⛩️───🌸───⛩️─╮", mid: "│", bot: "╰─⛩️───🌸───⛩️─╯" },
+  { top: "┏━━🌸日本🌸━━┓", mid: "┃", bot: "┗━━🌸日本🌸━━┛" },
+  { top: "╒═桜═╕", mid: "│", bot: "╘═桜═╛" },
+  { top: "╭🌸─🌸─🌸─╮", mid: "│", bot: "╰🌸─🌸─🌸─╯" },
+
+  // Minimalistas ⚪
+  { top: "╭──────────╮", mid: "│", bot: "╰──────────╯" },
+  { top: "┌────────────┐", mid: "│", bot: "└────────────┘" },
+  { top: "╒═════════╕", mid: "│", bot: "╘═════════╛" },
+  { top: "╭⋆｡˚🫧˚｡⋆╮", mid: "│", bot: "╰⋆｡˚🫧˚｡⋆╯" },
+  { top: "┏━━━━━━━┓", mid: "┃", bot: "┗━━━━━━━┛" },
+
+  // Futuristas 🌐
+  { top: "╭◇NEON◇╮", mid: "│", bot: "╰◇NEON◇╯" },
+  { top: "┌⚡HYPER⚡┐", mid: "│", bot: "└⚡CORE⚡┘" },
+  { top: "╒═💠CYBER💠═╕", mid: "│", bot: "╘═💠SPACE💠═╛" },
+  { top: "╭═🌐═══💫═══🌐═╮", mid: "┃", bot: "╰═🌐═══💫═══🌐═╯" }
 ]
+
+// ⚙️ Generar decoraciones aleatorias (más de 150)
+for (let i = 0; i < 130; i++) {
+  const randomEmoji = ["🌊", "🫧", "🦈", "💙", "✨", "🐚", "💫", "🧜‍♀️", "⚙️", "🌀"][Math.floor(Math.random() * 10)]
+  borders.push({
+    top: `╭═══${randomEmoji.repeat(Math.floor(Math.random() * 3) + 2)}═══╮`,
+    mid: "│",
+    bot: `╰═══${randomEmoji.repeat(Math.floor(Math.random() * 3) + 2)}═══╯`
+  })
+}
 
 // 🎬 URLs de los videos disponibles
 const videos = [
-  'https://github.com/Andresv27728/dtbs/raw/main/xzadonix_49.mp4',
+  'https://github.com/Andresv27728/dtbs/blob/main/SSYouTube.online_blue%20horizon!!%20-%20Gawr%20Gura_1080p.mp4',
   'https://files.catbox.moe/ia78ce.mp4'
 ]
 
 const menuCommand = {
   name: "menu",
   category: "general",
-  description: "Muestra el menú de comandos del bot.",
-  aliases: ["help", "menu", "menú"],
+  description: "Muestra el menú de comandos del bot con decoraciones aleatorias Gura.",
+  aliases: ["help", "menú"],
 
   async execute({ sock, msg, commands, config }) {
-    const categories = {}
     const senderName = msg.pushName || 'Chumbie'
     const from = msg.key.remoteJid
-
     const settings = readSettingsDb()
     const groupSettings = settings[from] || {}
     const isRpgDisabled = from.endsWith('@g.us') && groupSettings.rpgEnabled === false
 
-    // 🩵 Borde aleatorio
     const border = borders[Math.floor(Math.random() * borders.length)]
+    const categories = {}
 
-    // Agrupar comandos
     commands.forEach(command => {
       if (!command.category || command.name === 'test') return
       if (isRpgDisabled && command.category === 'rpg') return
-      const category = command.category.toLowerCase()
-      if (!categories[category]) categories[category] = []
-      categories[category].push(command)
+      const cat = command.category.toLowerCase()
+      if (!categories[cat]) categories[cat] = []
+      categories[cat].push(command)
     })
 
-    const sortedCategories = Object.keys(categories).sort()
+    const sorted = Object.keys(categories).sort()
 
-    // 💬 Construir el texto del menú
-    let menuText = `${border.top} *GURA BOT* 🔱』\n`
-    menuText += `${border.mid} Hey, *${senderName}*!\n`
-    menuText += `${border.mid} Bot: *${config.botName}*\n`
-    menuText += `${border.mid} Creador: *${config.ownerName}*\n`
-    menuText += `${border.bot}\n\n`
+    let menuText = `${border.top}\n${border.mid} 💙 *GURA BOT MENU* 💙\n${border.mid} Usuario: *${senderName}*\n${border.mid} Bot: *${config.botName}*\n${border.mid} Creador: *${config.ownerName}*\n${border.bot}\n\n`
 
-    for (const category of sortedCategories) {
-      const emoji = categoryEmojis[category] || '⚙️'
-      menuText += `${border.top} ${emoji} *${category.toUpperCase()}* 』\n`
-      const commandList = categories[category]
-        .filter((cmd, index, self) => self.findIndex(c => c.name === cmd.name) === index)
-        .map(cmd => `${border.mid} ⤷ ${cmd.name}`)
+    for (const category of sorted) {
+      const emojiList = baseCategoryEmojis[category] || ['⚙️']
+      const emoji = emojiList[Math.floor(Math.random() * emojiList.length)]
+      const cmds = categories[category]
+        .filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i)
+        .map(c => `${border.mid} ⤷ ${c.name}`)
         .join('\n')
-      menuText += `${commandList}\n${border.bot}\n\n`
+      menuText += `${border.top}\n${border.mid} ${emoji} *${category.toUpperCase()}*\n${cmds}\n${border.bot}\n\n`
     }
 
-    menuText += `${border.top} 🌊 *ATLANTIS SYSTEM* 🌊 』\n`
-    menuText += `${border.mid} Gracias por usarme, *${senderName}* 💙\n`
-    menuText += `${border.mid} Sumérgete con Gura en las olas del código.\n`
-    menuText += `${border.bot}`
+    menuText += `${border.top}\n${border.mid} 🌊 *ATLANTIS SYSTEM* 🌊\n${border.mid} Gracias por usar a Gura, *${senderName}* 💙\n${border.mid} ¡Sumérgete en las olas del código!\n${border.bot}`
 
-    // 🎞️ Elegir un video aleatorio
-    const chosen = Math.floor(Math.random() * videos.length)
-    const primaryVideo = videos[chosen]
-    const backupVideo = videos[1 - chosen] // el otro video
-
-    // 🔁 Intentar enviar video principal, y si falla, usar respaldo
+    const vid = videos[Math.floor(Math.random() * videos.length)]
     try {
       await sock.sendMessage(from, {
-        video: { url: primaryVideo },
+        video: { url: vid },
         caption: menuText,
-        mimetype: 'video/mp4',
-        gifPlayback: false
+        mimetype: 'video/mp4'
       }, { quoted: msg })
-    } catch (err) {
-      console.error('⚠️ Error enviando video principal:', err)
-      await sock.sendMessage(from, {
-        video: { url: backupVideo },
-        caption: menuText,
-        mimetype: 'video/mp4',
-        gifPlayback: false
-      }, { quoted: msg })
+    } catch {
+      await sock.sendMessage(from, { text: menuText }, { quoted: msg })
     }
   }
 }
